@@ -11,7 +11,7 @@ Build a modularized, clean PyTorch-based repository for predicting gene expressi
 ## Part 1: Data Splitting & Indexing Strategy
 
 ### 1.1 Data Structure Overview
-**Root:** `{data_root}/{tissue}/` from `scripts/run_config.json`
+**Root:** `{data_root}/{tissue}/` from `configs/run_config.json`
 
 | Component | Format | Structure | Dimensions |
 |-----------|--------|-----------|-----------|
@@ -189,7 +189,7 @@ def scaled_mse_loss(y_hat, y, eps=1e-6):
 - device: auto-detect CUDA
 ```
 
-Training and model hyperparameters are loaded from `scripts/run_config.json`.
+Training and model hyperparameters are loaded from `configs/run_config.json`.
 
 ---
 
@@ -241,7 +241,7 @@ Training and model hyperparameters are loaded from `scripts/run_config.json`.
 2. **Gene Column Order:** Verify identical order across all tissue expression CSVs
 3. **Early Stopping:** patience=2 on validation loss
 4. **Loss Normalization:** Per-dimension scaling via scaled_mse_loss
-5. **Hyperparameters:** shared across modes and configured in `scripts/run_config.json`
+5. **Hyperparameters:** shared across modes and configured in `configs/run_config.json`
 
 ---
 

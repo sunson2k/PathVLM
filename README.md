@@ -12,7 +12,7 @@ pip install -e .
 ```
 
 ### 2. Data Preparation
-Edit `scripts/run_config.json` for your local data and output roots:
+Edit `configs/run_config.json` for your local data and output roots:
 
 ```json
 {
@@ -89,9 +89,12 @@ python scripts/06_summarize_results.py
 ```
 {project_root}/
 ├── code_plan.md                       # Detailed implementation plan
+├── configs/
+│   ├── run_config.json                # Local runtime settings
+│   └── run_config_template.json       # Example runtime settings
 ├── src/
 │   ├── __init__.py
-│   ├── config.py                      # Loads runtime settings from scripts/run_config.json
+│   ├── config.py                      # Loads runtime settings from configs/run_config.json
 │   ├── data_preparation.py            # Data splitting & alignment verification
 │   ├── data_loaders.py                # PyTorch Dataset implementations
 │   ├── models.py                      # Three model architectures
@@ -155,7 +158,7 @@ optimizer = Adam
 loss_function = scaled_mse_loss  # Per-dimension normalization
 ```
 
-These values are configured in `scripts/run_config.json`.
+These values are configured in `configs/run_config.json`.
 
 ## Key Features
 
@@ -227,9 +230,9 @@ summary.md                        # Markdown comparison summary
 
 ## Troubleshooting
 
-**FileNotFoundError**: Check that data is accessible at `{data_root}/{tissue}/` from `scripts/run_config.json`
+**FileNotFoundError**: Check that data is accessible at `{data_root}/{tissue}/` from `configs/run_config.json`
 
-**CUDA Out of Memory**: Reduce `training.batch_size` in `scripts/run_config.json`
+**CUDA Out of Memory**: Reduce `training.batch_size` in `configs/run_config.json`
 
 **Misaligned Data**: Run `01_prepare_data.py` with debug logging to identify problematic samples
 
@@ -239,7 +242,7 @@ summary.md                        # Markdown comparison summary
 - Dynamic data loading: Features loaded from disk at sample time
 - Memory efficient: Expression CSVs loaded once per dataset creation
 - Modular architecture: Each component independently testable
-- Configuration centralized: Runtime paths and training hyperparameters in `scripts/run_config.json`
+- Configuration centralized: Runtime paths and training hyperparameters in `configs/run_config.json`
 
 ## Performance Expectations
 

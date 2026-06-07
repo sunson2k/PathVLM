@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "scripts", "run_config.json")
+RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "configs", "run_config.json")
+os.environ.setdefault("TORCH_HOME", os.path.join(PROJECT_ROOT, ".cache", "torch"))
 
 
 def _load_run_config() -> dict:
@@ -22,10 +23,19 @@ _TRAINING_CONFIG = _RUN_CONFIG.get("training", {})
 _MODEL_CONFIG = _RUN_CONFIG.get("model", {})
 
 
+def _resolve_from_project_root(path_value: str) -> str:
+    """Resolve relative config paths against the repository root."""
+    if not path_value:
+        return path_value
+    if os.path.isabs(path_value):
+        return os.path.abspath(path_value)
+    return os.path.abspath(os.path.join(PROJECT_ROOT, path_value))
+
+
 @dataclass
 class DataConfig:
     """Data configuration."""
-    data_root: str = _RUN_CONFIG.get("data_root", "")
+    data_root: str = _resolve_from_project_root(_RUN_CONFIG.get("data_root", ""))
     tissue: str = _RUN_CONFIG.get("tissue", "Breast")
     
     # Data folders
@@ -83,7 +93,7 @@ class ModelConfig:
 @dataclass
 class PathConfig:
     """Path configuration."""
-    project_root: str = _RUN_CONFIG.get("project_root", PROJECT_ROOT)
+    project_root: str = _resolve_from_project_root(_RUN_CONFIG.get("project_root", PROJECT_ROOT))
     
     @property
     def src_dir(self) -> str:

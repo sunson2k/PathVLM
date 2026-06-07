@@ -1,0 +1,25 @@
+{
+  "data_root": "data",
+  "project_root": ".",
+  "tissue": "Breast",
+  "training": {
+    "batch_size": 64,
+    "num_workers": 4,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "max_epochs": 100,
+    "early_stop_patience": 2,
+    "device": "cuda",
+    "loss_eps": 0.000001
+  },
+  "model": {
+    "resnet_backbone": "resnet50",
+    "resnet_pretrained": true,
+    "resnet_freeze_backbone": true,
+    "dnn_hidden_sizes": [
+      1024,
+      512
+    ],
+    "dnn_dropout": 0.4
+  }
+}
