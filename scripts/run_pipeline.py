@@ -1,10 +1,13 @@
-#!/scr2/lucasni/.venv/bin/python
+#!/usr/bin/env python
 """Master orchestrator: run full pipeline end-to-end."""
 
 import sys
 import os
 import subprocess
 import logging
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from config import Config
 
 # Setup logging
 logging.basicConfig(
@@ -76,7 +79,7 @@ def main():
     logger.info("✓ PIPELINE COMPLETE")
     logger.info("=" * 70)
     logger.info("")
-    logger.info("Results saved to: /scr2/lucasni/.temp_code/PathVLM/results/")
+    logger.info(f"Results saved to: {Config.paths.results_dir}")
     logger.info("  - image_mode/")
     logger.info("  - visual_mode/")
     logger.info("  - multimodal_mode/")

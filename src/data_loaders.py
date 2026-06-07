@@ -28,7 +28,7 @@ class GeneExpressionDataset(Dataset):
         """
         Args:
             split_df: DataFrame with tissue_id and spot_id columns
-            data_root: Root path to data (e.g., /scr2/lucasni/data)
+            data_root: Root path to data
             gene_columns: List of gene column names
             expr_csv_dir: Directory name for expression CSVs (e.g., ST-expression-top-8n)
             feature_mode: One of ['image', 'visual_embedding', 'multimodal']
@@ -43,9 +43,9 @@ class GeneExpressionDataset(Dataset):
         
         # Build paths
         self.tissue = Config.data.tissue
-        self.patch_root = os.path.join(data_root, self.tissue, "ST-patches")
-        self.visual_feat_root = os.path.join(data_root, self.tissue, "ST-features-UNI")
-        self.text_feat_root = os.path.join(data_root, self.tissue, "ST-features-CONCH-text")
+        self.patch_root = os.path.join(data_root, self.tissue, Config.data.patch_dir)
+        self.visual_feat_root = os.path.join(data_root, self.tissue, Config.data.visual_feat_dir)
+        self.text_feat_root = os.path.join(data_root, self.tissue, Config.data.text_feat_dir)
         self.expr_root = os.path.join(data_root, self.tissue, expr_csv_dir)
         
         # Load all expression data into memory for faster access
@@ -235,7 +235,7 @@ def create_dataloaders(split_dir: str,
                       batch_size: int = 64,
                       num_workers: int = 4,
                       expr_csv_dir: str = "ST-expression-top-8n",
-                      data_root: str = "/scr2/lucasni/data") -> Tuple[DataLoader, DataLoader, DataLoader, Optional[StandardScaler]]:
+                      data_root: str = None) -> Tuple[DataLoader, DataLoader, DataLoader, Optional[StandardScaler]]:
     """
     Create PyTorch DataLoaders for train/val/test splits.
     
@@ -251,6 +251,8 @@ def create_dataloaders(split_dir: str,
         (train_loader, val_loader, test_loader, scaler)
         scaler is None for image mode, otherwise a fitted StandardScaler
     """
+    if data_root is None:
+        data_root = Config.data.data_root
     
     # Load split files
     train_df = pd.read_csv(os.path.join(split_dir, 'train_split.csv'))
@@ -275,7 +277,7 @@ def create_dataloaders(split_dir: str,
             for _, row in train_df.iterrows():
                 tissue_id = row['tissue_id']
                 spot_id = row['spot_id']
-                feat_path = os.path.join(data_root, Config.data.tissue, "ST-features-UNI", 
+                feat_path = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir, 
                                         f"{tissue_id}_features.csv")
                 feat_df = pd.read_csv(feat_path, index_col='spot_id')
                 train_features.append(feat_df.loc[spot_id].values)
@@ -290,13 +292,13 @@ def create_dataloaders(split_dir: str,
                 spot_id = row['spot_id']
                 
                 # Load visual
-                visual_path = os.path.join(data_root, Config.data.tissue, "ST-features-UNI", 
+                visual_path = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir, 
                                           f"{tissue_id}_features.csv")
                 visual_df = pd.read_csv(visual_path, index_col='spot_id')
                 visual = visual_df.loc[spot_id].values
                 
                 # Load text
-                text_path = os.path.join(data_root, Config.data.tissue, "ST-features-CONCH-text", 
+                text_path = os.path.join(data_root, Config.data.tissue, Config.data.text_feat_dir, 
                                         f"{tissue_id}_text_features.csv")
                 text_df = pd.read_csv(text_path, index_col='spot_id')
                 text = text_df.loc[spot_id].values

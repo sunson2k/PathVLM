@@ -1,13 +1,32 @@
 """Global configuration for PathVLM pipeline."""
+import json
 import os
 from dataclasses import dataclass
+
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "scripts", "run_config.json")
+
+
+def _load_run_config() -> dict:
+    """Load user-specific runtime configuration."""
+    if not os.path.exists(RUN_CONFIG_PATH):
+        return {}
+
+    with open(RUN_CONFIG_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+_RUN_CONFIG = _load_run_config()
+_TRAINING_CONFIG = _RUN_CONFIG.get("training", {})
+_MODEL_CONFIG = _RUN_CONFIG.get("model", {})
 
 
 @dataclass
 class DataConfig:
     """Data configuration."""
-    data_root: str = "/scr2/lucasni/data"
-    tissue: str = "Breast"
+    data_root: str = _RUN_CONFIG.get("data_root", "")
+    tissue: str = _RUN_CONFIG.get("tissue", "Breast")
     
     # Data folders
     patch_dir: str = "ST-patches"
@@ -32,39 +51,39 @@ class DataConfig:
 @dataclass
 class TrainingConfig:
     """Training hyperparameters."""
-    batch_size: int = 64
-    num_workers: int = 4
-    learning_rate: float = 3e-4
-    weight_decay: float = 1e-4
-    max_epochs: int = 100
-    early_stop_patience: int = 2
-    device: str = "cuda"  # will auto-detect if available
+    batch_size: int = _TRAINING_CONFIG.get("batch_size", 64)
+    num_workers: int = _TRAINING_CONFIG.get("num_workers", 4)
+    learning_rate: float = _TRAINING_CONFIG.get("learning_rate", 3e-4)
+    weight_decay: float = _TRAINING_CONFIG.get("weight_decay", 1e-4)
+    max_epochs: int = _TRAINING_CONFIG.get("max_epochs", 100)
+    early_stop_patience: int = _TRAINING_CONFIG.get("early_stop_patience", 2)
+    device: str = _TRAINING_CONFIG.get("device", "cuda")
     
     # Loss
-    loss_eps: float = 1e-6  # epsilon for scaled MSE
+    loss_eps: float = _TRAINING_CONFIG.get("loss_eps", 1e-6)
 
 
 @dataclass
 class ModelConfig:
     """Model architecture configuration."""
     # ResNet
-    resnet_backbone: str = "resnet50"
-    resnet_pretrained: bool = True
-    resnet_freeze_backbone: bool = True
+    resnet_backbone: str = _MODEL_CONFIG.get("resnet_backbone", "resnet50")
+    resnet_pretrained: bool = _MODEL_CONFIG.get("resnet_pretrained", True)
+    resnet_freeze_backbone: bool = _MODEL_CONFIG.get("resnet_freeze_backbone", True)
     
     # DNN
-    dnn_hidden_sizes: list = None  # Will be set per mode
-    dnn_dropout: float = 0.4
+    dnn_hidden_sizes: list = None
+    dnn_dropout: float = _MODEL_CONFIG.get("dnn_dropout", 0.4)
     
     def __post_init__(self):
         if self.dnn_hidden_sizes is None:
-            self.dnn_hidden_sizes = [1024, 512]
+            self.dnn_hidden_sizes = _MODEL_CONFIG.get("dnn_hidden_sizes", [1024, 512])
 
 
 @dataclass
 class PathConfig:
     """Path configuration."""
-    project_root: str = "/scr2/lucasni/.temp_code/PathVLM"
+    project_root: str = _RUN_CONFIG.get("project_root", PROJECT_ROOT)
     
     @property
     def src_dir(self) -> str:

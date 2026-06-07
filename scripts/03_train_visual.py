@@ -1,4 +1,4 @@
-#!/scr2/lucasni/.venv/bin/python
+#!/usr/bin/env python
 """Script 03: Train visual embedding model."""
 
 import sys
@@ -28,7 +28,9 @@ def main():
     """Train visual embedding-based DNN model."""
     
     # Setup
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = Config.training.device
+    if device == "cuda" and not torch.cuda.is_available():
+        device = "cpu"
     logger.info(f"Using device: {device}")
     
     # Create dataloaders
@@ -39,21 +41,22 @@ def main():
         feature_mode='visual_embedding',
         batch_size=Config.training.batch_size,
         num_workers=Config.training.num_workers,
-        expr_csv_dir='ST-expression-top-8n',
+        expr_csv_dir=Config.data.expr_8n_dir,
         data_root=Config.data.data_root
     )
     
     # Get gene names for evaluation
     import pandas as pd
     expr_df = pd.read_csv(
-        os.path.join(Config.data.data_root, Config.data.tissue, 'ST-expression-top-8n', 
-                     os.listdir(os.path.join(Config.data.data_root, Config.data.tissue, 'ST-expression-top-8n'))[0]),
+        os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_8n_dir, 
+                     os.listdir(os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_8n_dir))[0]),
         index_col=0
     )
     gene_names = expr_df.columns.str.strip().tolist()
     model = VisualDNN(
         num_genes=len(gene_names),
-        dropout=0.4
+        hidden_dims=Config.model.dnn_hidden_sizes,
+        dropout=Config.model.dnn_dropout
     )
     
     # Create trainer

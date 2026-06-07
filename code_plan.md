@@ -11,7 +11,7 @@ Build a modularized, clean PyTorch-based repository for predicting gene expressi
 ## Part 1: Data Splitting & Indexing Strategy
 
 ### 1.1 Data Structure Overview
-**Root:** `/scr2/lucasni/data/Breast/`
+**Root:** `{data_root}/{tissue}/` from `scripts/run_config.json`
 
 | Component | Format | Structure | Dimensions |
 |-----------|--------|-----------|-----------|
@@ -54,13 +54,13 @@ Build a modularized, clean PyTorch-based repository for predicting gene expressi
    - From temp: val (50% = 15%), test (50% = 15%)
 
 5. **Save split files:**
-   - Output directory: `/scr2/lucasni/.temp_code/PathVLM/data_splits/`
+   - Output directory: `{project_root}/data_splits/`
    - Three CSV files: `train_split.csv`, `val_split.csv`, `test_split.csv`
    - Each CSV contains columns: `tissue_id`, `spot_id` (no data duplication)
 
 ### 1.3 Implementation Module: `data_preparation.py`
 
-**Location:** `/scr2/lucasni/.temp_code/PathVLM/src/data_preparation.py`
+**Location:** `{project_root}/src/data_preparation.py`
 
 **Key Functions:**
 - `enumerate_samples()` → List[(tissue_id, spot_id)]
@@ -76,7 +76,7 @@ Build a modularized, clean PyTorch-based repository for predicting gene expressi
 
 ### 2.1 Core Data Classes
 
-**Module:** `/scr2/lucasni/.temp_code/PathVLM/src/data_loaders.py`
+**Module:** `{project_root}/src/data_loaders.py`
 
 #### 2.1.1 GeneExpressionDataset (Abstract Base)
 
@@ -125,11 +125,11 @@ class GeneExpressionDataset(Dataset):
 
 ### 3.1 Model Implementations
 
-**Module:** `/scr2/lucasni/.temp_code/PathVLM/src/models.py`
+**Module:** `{project_root}/src/models.py`
 
 #### Mode 1: ResNetRegressor
 
-**Base:** Adapt existing `GeneCNN` from `/home/lucasni/projects/geneexpressions.py`
+**Base:** Adapt existing `GeneCNN` implementation if available
 
 ```
 class ResNetRegressor(nn.Module):
@@ -140,7 +140,7 @@ class ResNetRegressor(nn.Module):
 
 #### Mode 2: MultiLayerDNN (Visual Embeddings)
 
-**Base:** Adapt existing `GeneMLP` from `/home/lucasni/projects/vitbased.py`
+**Base:** Adapt existing `GeneMLP` implementation if available
 
 ```
 class MultiLayerDNN(nn.Module):
@@ -177,7 +177,7 @@ def scaled_mse_loss(y_hat, y, eps=1e-6):
 
 ### 3.3 Training Module
 
-**Module:** `/scr2/lucasni/.temp_code/PathVLM/src/training.py`
+**Module:** `{project_root}/src/training.py`
 
 **Configuration (CFG):**
 ```
@@ -189,11 +189,13 @@ def scaled_mse_loss(y_hat, y, eps=1e-6):
 - device: auto-detect CUDA
 ```
 
+Training and model hyperparameters are loaded from `scripts/run_config.json`.
+
 ---
 
 ## Part 4: Evaluation & Reporting
 
-**Module:** `/scr2/lucasni/.temp_code/PathVLM/src/evaluation.py`
+**Module:** `{project_root}/src/evaluation.py`
 
 **Tracked Metrics (per epoch):**
 - Train loss (scaled MSE)
@@ -205,7 +207,7 @@ def scaled_mse_loss(y_hat, y, eps=1e-6):
 ## Part 5: Repository Structure
 
 ```
-/scr2/lucasni/.temp_code/PathVLM/
+{project_root}/
 ├── code_plan.md (THIS FILE)
 ├── src/
 │   ├── __init__.py
@@ -238,7 +240,7 @@ def scaled_mse_loss(y_hat, y, eps=1e-6):
 2. **Gene Column Order:** Verify identical order across all tissue expression CSVs
 3. **Early Stopping:** patience=2 on validation loss
 4. **Loss Normalization:** Per-dimension scaling via scaled_mse_loss
-5. **Hyperparameters (fixed across modes):** lr=3e-4, weight_decay=1e-4, batch_size=64
+5. **Hyperparameters:** shared across modes and configured in `scripts/run_config.json`
 
 ---
 

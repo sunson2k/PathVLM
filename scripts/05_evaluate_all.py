@@ -1,4 +1,4 @@
-#!/scr2/lucasni/.venv/bin/python
+#!/usr/bin/env python
 """Script 05: Evaluate all models and generate comparison report."""
 
 import sys

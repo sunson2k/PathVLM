@@ -1,4 +1,4 @@
-#!/scr2/lucasni/.venv/bin/python
+#!/usr/bin/env python
 """Script 01: Data preparation - split and align samples across all modalities."""
 
 import sys

@@ -8,14 +8,18 @@ from typing import List
 class ResNetRegressor(nn.Module):
     """ResNet50-based regressor for image-to-expression prediction."""
     
-    def __init__(self, num_genes: int = 250, pretrained: bool = True, freeze_backbone: bool = True):
+    def __init__(self, num_genes: int = 250, backbone: str = "resnet50",
+                 pretrained: bool = True, freeze_backbone: bool = True):
         """
         Args:
             num_genes: Output dimension (number of genes)
+            backbone: ResNet backbone name
             pretrained: Use ImageNet pretrained weights
             freeze_backbone: Freeze layers 0-2, train only layers 3-4
         """
         super().__init__()
+        if backbone != "resnet50":
+            raise ValueError(f"Unsupported ResNet backbone: {backbone}")
         
         # Load ResNet50 backbone
         self.backbone = models.resnet50(weights='IMAGENET1K_V2' if pretrained else None)
@@ -101,15 +105,20 @@ class MultiLayerDNN(nn.Module):
 class VisualDNN(MultiLayerDNN):
     """DNN for visual embeddings (1024-dim input)."""
     
-    def __init__(self, num_genes: int = 250, dropout: float = 0.4):
+    def __init__(self, num_genes: int = 250, hidden_dims: List[int] = None,
+                 dropout: float = 0.4):
         """
         Args:
             num_genes: Output dimension
+            hidden_dims: Hidden layer dimensions
             dropout: Dropout probability
         """
+        if hidden_dims is None:
+            hidden_dims = [1024, 512]
+
         super().__init__(
             input_dim=1024,
-            hidden_dims=[1024, 512],
+            hidden_dims=hidden_dims,
             output_dim=num_genes,
             dropout=dropout
         )
@@ -118,15 +127,20 @@ class VisualDNN(MultiLayerDNN):
 class MultimodalDNN(MultiLayerDNN):
     """DNN for multimodal embeddings (1536-dim input = 1024 visual + 1024 text)."""
     
-    def __init__(self, num_genes: int = 250, dropout: float = 0.4):
+    def __init__(self, num_genes: int = 250, hidden_dims: List[int] = None,
+                 dropout: float = 0.4):
         """
         Args:
             num_genes: Output dimension
+            hidden_dims: Hidden layer dimensions
             dropout: Dropout probability
         """
+        if hidden_dims is None:
+            hidden_dims = [1024, 512]
+
         super().__init__(
             input_dim=1536,
-            hidden_dims=[1024, 512],
+            hidden_dims=hidden_dims,
             output_dim=num_genes,
             dropout=dropout
         )

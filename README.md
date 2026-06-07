@@ -5,6 +5,33 @@ A production-ready PyTorch repository for predicting gene expression from spatia
 ## Quick Start
 
 ### 1. Data Preparation
+Edit `scripts/run_config.json` for your local data and output roots:
+
+```json
+{
+  "data_root": "/path/to/data",
+  "project_root": "/path/to/PathVLM",
+  "tissue": "Breast",
+  "training": {
+    "batch_size": 64,
+    "num_workers": 4,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "max_epochs": 100,
+    "early_stop_patience": 2,
+    "device": "cuda",
+    "loss_eps": 0.000001
+  },
+  "model": {
+    "resnet_backbone": "resnet50",
+    "resnet_pretrained": true,
+    "resnet_freeze_backbone": true,
+    "dnn_hidden_sizes": [1024, 512],
+    "dnn_dropout": 0.4
+  }
+}
+```
+
 ```bash
 python scripts/01_prepare_data.py
 ```
@@ -34,7 +61,7 @@ python scripts/05_evaluate_all.py
 ## Data Structure
 
 ```
-/scr2/lucasni/data/Breast/
+{data_root}/{tissue}/
 ├── ST-patches/                        # Raw PNG image patches
 │   └── {tissue_id}/
 │       └── {spot_id}.png
@@ -51,11 +78,11 @@ python scripts/05_evaluate_all.py
 ## Project Structure
 
 ```
-/scr2/lucasni/.temp_code/PathVLM/
+{project_root}/
 ├── code_plan.md                       # Detailed implementation plan
 ├── src/
 │   ├── __init__.py
-│   ├── config.py                      # Central configuration (lr, batch_size, etc)
+│   ├── config.py                      # Loads runtime settings from scripts/run_config.json
 │   ├── data_preparation.py            # Data splitting & alignment verification
 │   ├── data_loaders.py                # PyTorch Dataset implementations
 │   ├── models.py                      # Three model architectures
@@ -118,6 +145,8 @@ optimizer = Adam
 loss_function = scaled_mse_loss  # Per-dimension normalization
 ```
 
+These values are configured in `scripts/run_config.json`.
+
 ## Key Features
 
 ✅ **Data Integrity**
@@ -151,7 +180,7 @@ Each model generates:
 
 ## Output Files
 
-After training completes, results are saved to `/scr2/lucasni/.temp_code/PathVLM/results/`:
+After training completes, results are saved to `{project_root}/results/`:
 
 ```
 image_mode/
@@ -186,9 +215,9 @@ comparison_report.html            # HTML summary table
 
 ## Troubleshooting
 
-**FileNotFoundError**: Check that data is accessible at `/scr2/lucasni/data/Breast/`
+**FileNotFoundError**: Check that data is accessible at `{data_root}/{tissue}/` from `scripts/run_config.json`
 
-**CUDA Out of Memory**: Reduce `batch_size` in `src/config.py`
+**CUDA Out of Memory**: Reduce `training.batch_size` in `scripts/run_config.json`
 
 **Misaligned Data**: Run `01_prepare_data.py` with debug logging to identify problematic samples
 
@@ -198,7 +227,7 @@ comparison_report.html            # HTML summary table
 - Dynamic data loading: Features loaded from disk at sample time
 - Memory efficient: Expression CSVs loaded once per dataset creation
 - Modular architecture: Each component independently testable
-- Configuration centralized: All hyperparameters in `src/config.py`
+- Configuration centralized: Runtime paths and training hyperparameters in `scripts/run_config.json`
 
 ## Performance Expectations
 
