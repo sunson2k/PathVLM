@@ -8,9 +8,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add src to path so we can import visualization
+# Add project root to path so we can import src modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from src.config import Config
 from src.visualization import plot_loss_curves, plot_per_model_loss_curves
 
 
@@ -55,17 +56,19 @@ def build_markdown(table_rows, comparison_img_path: Path, per_model_img_path: Pa
         '- Both loss charts are created from the saved checkpoint histories for each mode.',
         '- All Y-axis scales are synchronized across charts for fair visual comparison.',
     ]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text('\n'.join(lines), encoding='utf-8')
     return output_path
 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate markdown summary and loss curves from PathVLM results.')
-    parser.add_argument('--results-dir', type=Path, default=Path('results'), help='Path to results root directory')
-    parser.add_argument('--output-md', type=Path, default=Path('results/summary.md'), help='Output markdown file')
-    parser.add_argument('--output-comparison-img', type=Path, default=Path('results/loss_comparison.png'), help='Output comparison loss plot image')
-    parser.add_argument('--output-per-model-img', type=Path, default=Path('results/loss_per_model.png'), help='Output per-model loss plot image')
-    parser.add_argument('--tissue', type=str, default='Breast', help='Tissue name for summary labels')
+    results_dir = Path(Config.paths.results_dir)
+    parser.add_argument('--results-dir', type=Path, default=results_dir, help='Path to results root directory')
+    parser.add_argument('--output-md', type=Path, default=results_dir / 'summary.md', help='Output markdown file')
+    parser.add_argument('--output-comparison-img', type=Path, default=results_dir / 'loss_comparison.png', help='Output comparison loss plot image')
+    parser.add_argument('--output-per-model-img', type=Path, default=results_dir / 'loss_per_model.png', help='Output per-model loss plot image')
+    parser.add_argument('--tissue', type=str, default=Config.data.tissue, help='Tissue name for summary labels')
     parser.add_argument('--expr-name', type=str, default='8n', help='Expression target name for summary labels')
     args = parser.parse_args()
 

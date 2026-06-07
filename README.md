@@ -4,7 +4,14 @@ A production-ready PyTorch repository for predicting gene expression from spatia
 
 ## Quick Start
 
-### 1. Data Preparation
+### 1. Environment Setup
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .
+```
+
+### 2. Data Preparation
 Edit `scripts/run_config.json` for your local data and output roots:
 
 ```json
@@ -37,14 +44,15 @@ python scripts/01_prepare_data.py
 ```
 This creates train/val/test splits (70/15/15) with verified alignment across all data modalities.
 
-### 2. Train All Models
+### 3. Run the End-to-End Pipeline
 ```bash
 python scripts/run_pipeline.py
 ```
-Trains three independent models:
+Prepares data, trains three independent models, evaluates each model, and generates final comparison reports:
 - **Image Mode**: ResNet50 backbone → 250-gene output
 - **Visual Mode**: 1024-dim embeddings → DNN → 250-gene output
 - **Multimodal Mode**: 1536-dim (visual+text) embeddings → DNN → 250-gene output
+- **Reports**: `results/comparison_report.html`, `results/summary.md`, `results/loss_comparison.png`, `results/loss_per_model.png`
 
 Or train individually:
 ```bash
@@ -53,9 +61,10 @@ python scripts/03_train_visual.py
 python scripts/04_train_multimodal.py
 ```
 
-### 3. Generate Evaluation Report
+### 4. Regenerate Reports Only
 ```bash
-python scripts/05_evaluate_all.py
+python scripts/05_compare_results.py
+python scripts/06_summarize_results.py
 ```
 
 ## Data Structure
@@ -94,7 +103,8 @@ python scripts/05_evaluate_all.py
 │   ├── 02_train_image.py              # Train image model
 │   ├── 03_train_visual.py             # Train visual model
 │   ├── 04_train_multimodal.py         # Train multimodal model
-│   ├── 05_evaluate_all.py             # Generate comparisons
+│   ├── 05_compare_results.py          # Generate HTML comparison report
+│   ├── 06_summarize_results.py        # Generate markdown summary and loss plots
 │   └── run_pipeline.py                # Master orchestrator
 ├── data_splits/                       # Generated split files
 │   ├── train_split.csv
@@ -198,7 +208,9 @@ image_mode/
     └── test_predictions.csv
 
 loss_comparison.png               # Loss curves overlay
+loss_per_model.png                # Per-model loss curves
 comparison_report.html            # HTML summary table
+summary.md                        # Markdown comparison summary
 ```
 
 ## Requirements
