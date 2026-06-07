@@ -78,8 +78,8 @@ class DataPreparer:
         for expr_file in os.listdir(self.expr_8n_root):
             if expr_file.endswith('_expression.csv'):
                 expr_path = os.path.join(self.expr_8n_root, expr_file)
-                df = pd.read_csv(expr_path, nrows=0)  # Load only column names
-                cols = df.columns.tolist()
+                df = pd.read_csv(expr_path, index_col=0, nrows=0)  # Load only gene column names
+                cols = [col.strip() for col in df.columns.tolist()]
                 
                 if gene_cols_8n is None:
                     gene_cols_8n = cols
@@ -89,8 +89,8 @@ class DataPreparer:
         for expr_file in os.listdir(self.expr_spcs_root):
             if expr_file.endswith('_expression.csv'):
                 expr_path = os.path.join(self.expr_spcs_root, expr_file)
-                df = pd.read_csv(expr_path, nrows=0)
-                cols = df.columns.tolist()
+                df = pd.read_csv(expr_path, index_col=0, nrows=0)
+                cols = [col.strip() for col in df.columns.tolist()]
                 
                 if gene_cols_spcs is None:
                     gene_cols_spcs = cols
@@ -125,60 +125,61 @@ class DataPreparer:
         
         aligned_samples = []
         
-        for tissue_id, spot_id in samples:
-            # Check patch exists
-            patch_path = os.path.join(self.patch_root, tissue_id, f"{spot_id}.png")
-            if not os.path.exists(patch_path):
+        # Create a lookup for unique tissue folders and avoid reloading modality files repeatedly.
+        tissue_ids = sorted({tissue_id for tissue_id, _ in samples})
+        for tissue_id in tissue_ids:
+            tissue_patch_dir = os.path.join(self.patch_root, tissue_id)
+            if not os.path.isdir(tissue_patch_dir):
+                logger.warning(f"Patch folder missing for {tissue_id}")
                 continue
             
-            # Load and check visual features
+            patch_ids = {f.replace('.png', '') for f in os.listdir(tissue_patch_dir) if f.endswith('.png')}
+            if not patch_ids:
+                continue
+            
             visual_feat_path = os.path.join(self.visual_feat_root, f"{tissue_id}_features.csv")
+            text_feat_path = os.path.join(self.text_feat_root, f"{tissue_id}_text_features.csv")
+            expr_8n_path = os.path.join(self.expr_8n_root, f"{tissue_id}_expression.csv")
+            expr_spcs_path = os.path.join(self.expr_spcs_root, f"{tissue_id}_expression.csv")
+            
             if not os.path.exists(visual_feat_path):
                 logger.warning(f"Missing visual features for {tissue_id}")
+                continue
+            if not os.path.exists(text_feat_path):
+                logger.warning(f"Missing text features for {tissue_id}")
+                continue
+            if not os.path.exists(expr_8n_path):
+                logger.warning(f"Missing 8n expression for {tissue_id}")
+                continue
+            if not os.path.exists(expr_spcs_path):
+                logger.warning(f"Missing spcs expression for {tissue_id}")
                 continue
             
             visual_df = pd.read_csv(visual_feat_path)
             if 'spot_id' not in visual_df.columns:
                 raise ValueError(f"{visual_feat_path} missing 'spot_id' column")
-            
-            if spot_id not in visual_df['spot_id'].astype(str).values:
-                continue
-            
-            # Load and check text features
-            text_feat_path = os.path.join(self.text_feat_root, f"{tissue_id}_text_features.csv")
-            if not os.path.exists(text_feat_path):
-                logger.warning(f"Missing text features for {tissue_id}")
-                continue
+            visual_spots = set(visual_df['spot_id'].astype(str))
             
             text_df = pd.read_csv(text_feat_path)
             if 'spot_id' not in text_df.columns:
                 raise ValueError(f"{text_feat_path} missing 'spot_id' column")
-            
-            if spot_id not in text_df['spot_id'].astype(str).values:
-                continue
-            
-            # Load and check 8n expression
-            expr_8n_path = os.path.join(self.expr_8n_root, f"{tissue_id}_expression.csv")
-            if not os.path.exists(expr_8n_path):
-                logger.warning(f"Missing 8n expression for {tissue_id}")
-                continue
+            text_spots = set(text_df['spot_id'].astype(str))
             
             expr_8n_df = pd.read_csv(expr_8n_path, index_col=0)
-            if spot_id not in expr_8n_df.index.astype(str).values:
-                continue
-            
-            # Load and check spcs expression
-            expr_spcs_path = os.path.join(self.expr_spcs_root, f"{tissue_id}_expression.csv")
-            if not os.path.exists(expr_spcs_path):
-                logger.warning(f"Missing spcs expression for {tissue_id}")
-                continue
+            expr_8n_spots = set(expr_8n_df.index.astype(str))
             
             expr_spcs_df = pd.read_csv(expr_spcs_path, index_col=0)
-            if spot_id not in expr_spcs_df.index.astype(str).values:
+            expr_spcs_spots = set(expr_spcs_df.index.astype(str))
+            
+            valid_spots = patch_ids & visual_spots & text_spots & expr_8n_spots & expr_spcs_spots
+            if not valid_spots:
+                logger.warning(f"No aligned spots found for tissue {tissue_id}")
                 continue
             
-            # All modalities exist for this sample
-            aligned_samples.append({'tissue_id': tissue_id, 'spot_id': spot_id})
+            aligned_samples.extend({'tissue_id': tissue_id, 'spot_id': spot_id}
+                                   for spot_id in sorted(valid_spots))
+            
+            logger.info(f"  {tissue_id}: {len(valid_spots)} aligned samples")
         
         aligned_df = pd.DataFrame(aligned_samples)
         logger.info(f"✓ Alignment verified: {len(aligned_df)} samples aligned across all modalities")

@@ -46,10 +46,11 @@ def main():
     # Get gene names for evaluation
     import pandas as pd
     expr_df = pd.read_csv(
-        os.path.join(Config.data.data_root, Config.data.tissue, 'ST-expression-top-8n', 
-                     os.listdir(os.path.join(Config.data.data_root, Config.data.tissue, 'ST-expression-top-8n'))[0])
+        os.path.join(Config.data.data_root, Config.data.tissue, 'ST-expression-top-8n',
+                     os.listdir(os.path.join(Config.data.data_root, Config.data.tissue, 'ST-expression-top-8n'))[0]),
+        index_col=0
     )
-    gene_names = expr_df.columns.tolist()
+    gene_names = expr_df.columns.str.strip().tolist()
     
     # Create model
     logger.info("Creating ResNetRegressor model...")

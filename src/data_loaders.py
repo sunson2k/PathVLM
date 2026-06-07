@@ -42,7 +42,7 @@ class GeneExpressionDataset(Dataset):
         self.scaler = scaler
         
         # Build paths
-        self.tissue = "Breast"
+        self.tissue = Config.data.tissue
         self.patch_root = os.path.join(data_root, self.tissue, "ST-patches")
         self.visual_feat_root = os.path.join(data_root, self.tissue, "ST-features-UNI")
         self.text_feat_root = os.path.join(data_root, self.tissue, "ST-features-CONCH-text")
@@ -61,6 +61,7 @@ class GeneExpressionDataset(Dataset):
         for tissue_id in unique_tissues:
             expr_path = os.path.join(self.expr_root, f"{tissue_id}_expression.csv")
             df = pd.read_csv(expr_path, index_col=0)
+            df.columns = df.columns.str.strip()
             expr_data[tissue_id] = df
         
         return expr_data
@@ -260,8 +261,8 @@ def create_dataloaders(split_dir: str,
     expr_root = os.path.join(data_root, Config.data.tissue, expr_csv_dir)
     first_tissue = train_df.iloc[0]['tissue_id']
     expr_path = os.path.join(expr_root, f"{first_tissue}_expression.csv")
-    expr_df = pd.read_csv(expr_path)
-    gene_columns = expr_df.columns.tolist()
+    expr_df = pd.read_csv(expr_path, index_col=0)
+    gene_columns = expr_df.columns.str.strip().tolist()
     
     # Initialize scaler if not image mode
     scaler = None
@@ -314,9 +315,14 @@ def create_dataloaders(split_dir: str,
         'multimodal': MultimodalDataset
     }[feature_mode]
     
-    train_dataset = dataset_class(train_df, data_root, gene_columns, expr_csv_dir, scaler=None)
-    val_dataset = dataset_class(val_df, data_root, gene_columns, expr_csv_dir, scaler=scaler)
-    test_dataset = dataset_class(test_df, data_root, gene_columns, expr_csv_dir, scaler=scaler)
+    if feature_mode == 'image':
+        train_dataset = dataset_class(train_df, data_root, gene_columns, expr_csv_dir)
+        val_dataset = dataset_class(val_df, data_root, gene_columns, expr_csv_dir)
+        test_dataset = dataset_class(test_df, data_root, gene_columns, expr_csv_dir)
+    else:
+        train_dataset = dataset_class(train_df, data_root, gene_columns, expr_csv_dir, scaler=scaler)
+        val_dataset = dataset_class(val_df, data_root, gene_columns, expr_csv_dir, scaler=scaler)
+        test_dataset = dataset_class(test_df, data_root, gene_columns, expr_csv_dir, scaler=scaler)
     
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, 
