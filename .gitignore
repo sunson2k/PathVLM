@@ -2,3 +2,7 @@
 results/
 data_splits/
 data/
+
+.venv/
+__pycache__/
+*.egg-info

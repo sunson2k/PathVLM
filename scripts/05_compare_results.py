@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Script 05: Evaluate all models and generate comparison report."""
+"""Script 05: Compare evaluated model outputs and generate an HTML report."""
 
 import sys
 import os
@@ -24,7 +24,7 @@ def main():
     """Generate comparison visualizations and reports."""
     
     logger.info("=" * 60)
-    logger.info("GENERATING COMPARISON VISUALIZATIONS")
+    logger.info("GENERATING COMPARISON REPORT")
     logger.info("=" * 60)
     
     results_dir = Config.paths.results_dir
@@ -64,7 +64,7 @@ def main():
     )
     
     logger.info("=" * 60)
-    logger.info("✓ EVALUATION COMPLETE")
+    logger.info("✓ COMPARISON COMPLETE")
     logger.info("=" * 60)
     logger.info("")
     logger.info("Outputs:")

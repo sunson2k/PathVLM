@@ -62,6 +62,8 @@ def main():
         ("02 - Train Image Model", os.path.join(script_dir, "02_train_image.py")),
         ("03 - Train Visual Model", os.path.join(script_dir, "03_train_visual.py")),
         ("04 - Train Multimodal Model", os.path.join(script_dir, "04_train_multimodal.py")),
+        ("05 - Compare Results", os.path.join(script_dir, "05_compare_results.py")),
+        ("06 - Summarize Results", os.path.join(script_dir, "06_summarize_results.py")),
     ]
     
     # Execute pipeline
@@ -83,6 +85,10 @@ def main():
     logger.info("  - image_mode/")
     logger.info("  - visual_mode/")
     logger.info("  - multimodal_mode/")
+    logger.info("  - comparison_report.html")
+    logger.info("  - summary.md")
+    logger.info("  - loss_comparison.png")
+    logger.info("  - loss_per_model.png")
     logger.info("")
     
     return 0

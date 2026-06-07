@@ -223,7 +223,8 @@ Training and model hyperparameters are loaded from `scripts/run_config.json`.
 │   ├── 02_train_image.py
 │   ├── 03_train_visual.py
 │   ├── 04_train_multimodal.py
-│   ├── 05_evaluate_all.py
+│   ├── 05_compare_results.py
+│   ├── 06_summarize_results.py
 │   └── run_pipeline.py
 ├── data_splits/
 ├── results/
@@ -255,7 +256,9 @@ Training and model hyperparameters are loaded from `scripts/run_config.json`.
 - `04_train_multimodal.py` → Train multimodal DNN
 
 ### Phase 3: Evaluation
-`05_evaluate_all.py` → Aggregate results and generate comparison report
+`05_compare_results.py` → Aggregate results and generate HTML comparison report
+
+`06_summarize_results.py` → Generate markdown summary and loss plots
 
 ### Phase 4: Master Orchestrator
 `run_pipeline.py` → Run all phases in sequence
