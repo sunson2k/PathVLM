@@ -4,11 +4,11 @@
 import sys
 import os
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add project root to path so src can be imported as a package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from config import Config
-from visualization import plot_loss_curves, generate_comparison_report
+from src.config import Config
+from src.visualization import plot_loss_curves, generate_comparison_report
 import logging
 
 # Setup logging

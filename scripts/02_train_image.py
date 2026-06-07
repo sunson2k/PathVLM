@@ -3,16 +3,15 @@
 
 import sys
 import os
-import torch
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add project root to path so src can be imported as a package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from config import Config
-from data_loaders import create_dataloaders
-from models import ResNetRegressor
-from training import Trainer
-from evaluation import evaluate_all_splits
+from src.config import Config
+from src.data_loaders import create_dataloaders
+from src.models import ResNetRegressor
+from src.training import Trainer, resolve_device
+from src.evaluation import evaluate_all_splits
 import logging
 
 # Setup logging
@@ -28,10 +27,7 @@ def main():
     """Train image-based ResNet model."""
     
     # Setup
-    device = Config.training.device
-    if device == "cuda" and not torch.cuda.is_available():
-        device = "cpu"
-    logger.info(f"Using device: {device}")
+    device = resolve_device(Config.training.device)
     
     # Create dataloaders
     logger.info("Creating dataloaders for image mode...")

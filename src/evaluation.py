@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Dict, List, Tuple
 
-from models import scaled_mse_loss
+from .models import scaled_mse_loss
 
 logger = logging.getLogger(__name__)
 

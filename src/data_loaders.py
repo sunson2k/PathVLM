@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from typing import Tuple, Optional
 import logging
 
-from config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,11 @@ class GeneExpressionDataset(Dataset):
         
         # Load target expression
         expr_df = self.expr_data[tissue_id]
-        target = torch.FloatTensor(expr_df.loc[spot_id, self.gene_columns].values)
+        target_values = expr_df.loc[spot_id, self.gene_columns].to_numpy(
+            dtype=np.float32,
+            copy=True,
+        )
+        target = torch.from_numpy(target_values)
         
         return features, target, uid
     
@@ -166,13 +170,13 @@ class VisualEmbeddingDataset(GeneExpressionDataset):
     def _load_features(self, tissue_id: str, spot_id: str) -> torch.Tensor:
         """Load visual embedding and optionally apply scaler."""
         feat_df = self.visual_features[tissue_id]
-        features = feat_df.loc[spot_id].values.astype(np.float32)
+        features = feat_df.loc[spot_id].to_numpy(dtype=np.float32, copy=True)
         
         # Apply scaler if available
         if self.scaler is not None:
-            features = self.scaler.transform([features])[0]
+            features = self.scaler.transform([features])[0].astype(np.float32, copy=True)
         
-        return torch.FloatTensor(features)
+        return torch.from_numpy(features)
 
 
 class MultimodalDataset(GeneExpressionDataset):
@@ -217,17 +221,17 @@ class MultimodalDataset(GeneExpressionDataset):
     
     def _load_features(self, tissue_id: str, spot_id: str) -> torch.Tensor:
         """Load and concatenate visual + text embeddings."""
-        visual = self.visual_features[tissue_id].loc[spot_id].values.astype(np.float32)
-        text = self.text_features[tissue_id].loc[spot_id].values.astype(np.float32)
+        visual = self.visual_features[tissue_id].loc[spot_id].to_numpy(dtype=np.float32, copy=True)
+        text = self.text_features[tissue_id].loc[spot_id].to_numpy(dtype=np.float32, copy=True)
         
         # Concatenate to 1536 dimensions
         combined = np.concatenate([visual, text], axis=0)
         
         # Apply scaler if available
         if self.scaler is not None:
-            combined = self.scaler.transform([combined])[0]
+            combined = self.scaler.transform([combined])[0].astype(np.float32, copy=True)
         
-        return torch.FloatTensor(combined)
+        return torch.from_numpy(combined)
 
 
 def create_dataloaders(split_dir: str,
@@ -280,7 +284,7 @@ def create_dataloaders(split_dir: str,
                 feat_path = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir, 
                                         f"{tissue_id}_features.csv")
                 feat_df = pd.read_csv(feat_path, index_col='spot_id')
-                train_features.append(feat_df.loc[spot_id].values)
+                train_features.append(feat_df.loc[spot_id].to_numpy(dtype=np.float32, copy=True))
             
             scaler.fit(np.array(train_features))
             logger.info(f"Fitted StandardScaler on {len(train_features)} training samples (visual)")
@@ -295,13 +299,13 @@ def create_dataloaders(split_dir: str,
                 visual_path = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir, 
                                           f"{tissue_id}_features.csv")
                 visual_df = pd.read_csv(visual_path, index_col='spot_id')
-                visual = visual_df.loc[spot_id].values
+                visual = visual_df.loc[spot_id].to_numpy(dtype=np.float32, copy=True)
                 
                 # Load text
                 text_path = os.path.join(data_root, Config.data.tissue, Config.data.text_feat_dir, 
                                         f"{tissue_id}_text_features.csv")
                 text_df = pd.read_csv(text_path, index_col='spot_id')
-                text = text_df.loc[spot_id].values
+                text = text_df.loc[spot_id].to_numpy(dtype=np.float32, copy=True)
                 
                 # Concatenate
                 combined = np.concatenate([visual, text], axis=0)

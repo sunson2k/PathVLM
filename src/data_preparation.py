@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from typing import List, Tuple, Dict
 import logging
 
-from config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

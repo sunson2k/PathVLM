@@ -4,11 +4,11 @@
 import sys
 import os
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add project root to path so src can be imported as a package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from data_preparation import DataPreparer
-from config import Config, setup_directories
+from src.data_preparation import DataPreparer
+from src.config import Config, setup_directories
 import logging
 
 # Setup logging

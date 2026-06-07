@@ -9,9 +9,35 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import logging
 
-from models import scaled_mse_loss
+from .models import scaled_mse_loss
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_device(requested_device: str) -> str:
+    """Resolve and validate the configured training device."""
+    requested_device = (requested_device or "cuda").lower()
+
+    if requested_device == "auto":
+        requested_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if requested_device.startswith("cuda"):
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "CUDA was requested for training, but this PyTorch install cannot "
+                "access CUDA. Install a CUDA-enabled torch/torchvision pair or set "
+                "training.device to 'cpu' in configs/run_config.json."
+            )
+
+        device = requested_device if ":" in requested_device else "cuda:0"
+        device_index = torch.device(device).index or 0
+        gpu_name = torch.cuda.get_device_name(device_index)
+        total_gb = torch.cuda.get_device_properties(device_index).total_memory / (1024 ** 3)
+        logger.info(f"Using device: {device} ({gpu_name}, {total_gb:.1f} GB)")
+        return device
+
+    logger.info(f"Using device: {requested_device}")
+    return requested_device
 
 
 class EarlyStopper:

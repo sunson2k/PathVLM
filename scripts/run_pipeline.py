@@ -6,8 +6,8 @@ import os
 import subprocess
 import logging
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from config import Config
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from src.config import Config
 
 # Setup logging
 logging.basicConfig(
