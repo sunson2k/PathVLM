@@ -49,8 +49,8 @@ class DataConfig:
     # Dimensions
     num_genes: int = 250
     visual_feature_dim: int = 1024
-    text_feature_dim: int = 1024
-    multimodal_feature_dim: int = 2048  # 1024 + 1024
+    text_feature_dim: int = 512
+    multimodal_feature_dim: int = 1536  # 1024 + 512
     
     # Split ratios
     train_ratio: float = 0.7
