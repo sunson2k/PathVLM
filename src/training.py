@@ -184,12 +184,13 @@ class Trainer:
         
         logger.debug(f"Saved checkpoint: {path}")
     
-    def load_checkpoint(self, path: str):
+    def load_checkpoint(self, path: str, restore_history: bool = True):
         """Load model checkpoint."""
         checkpoint = torch.load(path, map_location=self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.history = checkpoint['history']
+        if restore_history:
+            self.history = checkpoint['history']
         logger.info(f"Loaded checkpoint: {path}")
     
     def train(self, max_epochs: int = 100, early_stop_patience: int = 2) -> Dict:
@@ -209,7 +210,7 @@ class Trainer:
         
         early_stopper = EarlyStopper(patience=early_stop_patience)
         
-        for epoch in range(max_epochs):
+        for epoch in range(1, max_epochs + 1):
             # Train and evaluate
             train_loss = self.train_epoch()
             val_loss = self.evaluate(self.val_loader)
@@ -223,12 +224,11 @@ class Trainer:
             self.history['val_loss'].append(val_loss)
             self.history['test_loss'].append(test_loss)
             
-            # Log progress
-            if (epoch + 1) % max(1, max_epochs // 20) == 0 or epoch == 0:
-                logger.info(f"Epoch {epoch + 1:3d}/{max_epochs} | "
-                          f"Train: {train_loss:.6f} | "
-                          f"Val: {val_loss:.6f} | "
-                          f"Test: {test_loss:.6f}")
+            # Log every epoch so terminal and log output match the saved history.
+            logger.info(f"Epoch {epoch:3d}/{max_epochs} | "
+                      f"Train: {train_loss:.6f} | "
+                      f"Val: {val_loss:.6f} | "
+                      f"Test: {test_loss:.6f}")
             
             # Check for best model and save
             if val_loss < self.history['best_val_loss']:
@@ -244,7 +244,7 @@ class Trainer:
         # Load best model
         best_path = os.path.join(self.checkpoint_dir, 'best_model.pt')
         if os.path.exists(best_path):
-            self.load_checkpoint(best_path)
+            self.load_checkpoint(best_path, restore_history=False)
         
         logger.info("=" * 60)
         logger.info(f"Training complete ({self.mode_name})")
