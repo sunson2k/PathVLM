@@ -35,7 +35,8 @@ Edit `configs/run_config.json` for your local data and output roots:
     "resnet_freeze_mode": "early",
     "dnn_hidden_sizes": [1024, 512],
     "dnn_dropout": 0.4,
-    "dnn_normalization": "batchnorm"
+    "dnn_normalization": "batchnorm",
+    "multimodal_model": "cross_attention"
   }
 }
 ```
@@ -52,7 +53,7 @@ python scripts/run_pipeline.py
 Prepares data, trains three independent models, evaluates each model, and generates final comparison reports:
 - **Image Mode**: ResNet50 backbone → shared DNN head → 250-gene output
 - **Visual Mode**: 1024-dim embeddings → shared DNN → 250-gene output
-- **Multimodal Mode**: 1536-dim (visual+text) embeddings → shared DNN → 250-gene output
+- **Multimodal Mode**: 1536-dim (visual+text) embeddings → configured multimodal model → 250-gene output
 - **Reports**: `results/comparison_report.html`, `results/summary.md`, `results/loss_comparison.png`, `results/loss_per_model.png`
 
 Or train individually:
@@ -143,11 +144,21 @@ python scripts/06_summarize_results.py
 - **Dropout**: 0.4 between layers
 - **Normalization**: BatchNorm inside the DNN by default; StandardScaler fitted on training data only for input features
 
-### MultimodalDNN (Multimodal Mode)
+### Multimodal Models (Multimodal Mode)
+- **Config**: `model.multimodal_model`
+- **Options**: `concat`, `cross_attention`, or `gmu`
+- **GMU Status**: Placeholder only; selecting `gmu` raises `NotImplementedError` until implemented
+
+### MultimodalDNN
 - **Input**: 1536-dim concatenated (1024 visual + 512 text)
 - **Architecture**: 1536 → 1024 → 512 → 250
 - **Dropout**: 0.4 between layers
 - **Normalization**: BatchNorm inside the DNN by default; StandardScaler fitted on training data only for input features
+
+### MultimodalCrossAttentionDNN
+- **Input**: 1536-dim concatenated (1024 visual + 512 text), split internally into visual and text embeddings
+- **Fusion**: Text embedding modulates visual embedding through cross-attention
+- **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
 
 ## Training Configuration
 

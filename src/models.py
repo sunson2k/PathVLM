@@ -307,6 +307,17 @@ class MultimodalCrossAttentionDNN(nn.Module):
         return self.regressor(fused_embedding)
 
 
+class MultimodalGMUDNN(nn.Module):
+    """Placeholder for a multimodal Gated Multimodal Unit model."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        raise NotImplementedError(
+            "MultimodalGMUDNN is a placeholder. Implement the GMU architecture "
+            "in src/models.py before selecting model.multimodal_model='gmu'."
+        )
+
+
 def scaled_mse_loss(
     y_hat: torch.Tensor, y: torch.Tensor, eps: float = 1e-6
 ) -> torch.Tensor:

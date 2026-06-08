@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.config import Config
 from src.data_loaders import create_dataloaders
-from src.models import MultimodalDNN, MultimodalCrossAttentionDNN
+from src.models import MultimodalDNN, MultimodalCrossAttentionDNN, MultimodalGMUDNN
 from src.training import Trainer, resolve_device
 from src.evaluation import evaluate_all_splits
 import logging
@@ -20,6 +20,34 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def create_multimodal_model(num_genes: int):
+    """Create the configured multimodal architecture."""
+    model_type = Config.model.multimodal_model.lower()
+    common_kwargs = {
+        "num_genes": num_genes,
+        "hidden_dims": Config.model.dnn_hidden_sizes,
+        "dropout": Config.model.dnn_dropout,
+        "normalization": Config.model.dnn_normalization,
+    }
+
+    if model_type == "concat":
+        logger.info("Using multimodal architecture: concat")
+        return MultimodalDNN(**common_kwargs)
+
+    if model_type == "cross_attention":
+        logger.info("Using multimodal architecture: cross_attention")
+        return MultimodalCrossAttentionDNN(**common_kwargs)
+
+    if model_type == "gmu":
+        logger.info("Using multimodal architecture: gmu")
+        return MultimodalGMUDNN(**common_kwargs)
+
+    raise ValueError(
+        "Unsupported model.multimodal_model "
+        f"'{Config.model.multimodal_model}'. Use 'concat', 'cross_attention', or 'gmu'."
+    )
 
 
 def main():
@@ -51,23 +79,7 @@ def main():
     )
     gene_names = expr_df.columns.str.strip().tolist()
 
-    ## Simple Multimodal DNN (Concatenate visual + text features)
-    # model = MultimodalDNN(
-    #     num_genes=len(gene_names),
-    #     hidden_dims=Config.model.dnn_hidden_sizes,
-    #     dropout=Config.model.dnn_dropout,
-    #     normalization=Config.model.dnn_normalization
-    # )
-
-    ## Cross-Attention DNN (Text features modulate visual features via cross-attention). Use default hyperparameters for attention (embed_dim=512, num_heads=8)
-    model = MultimodalCrossAttentionDNN(
-        num_genes=len(gene_names),
-        hidden_dims=Config.model.dnn_hidden_sizes,
-        dropout=Config.model.dnn_dropout,
-        normalization=Config.model.dnn_normalization,
-        # embed_dim=Config.model.embed_dim,
-        # num_heads=Config.model.num_heads
-    )
+    model = create_multimodal_model(num_genes=len(gene_names))
 
     # Create trainer
     checkpoint_dir = os.path.join(

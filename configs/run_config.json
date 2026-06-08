@@ -1,4 +1,9 @@
 {
+  "_choices": {
+    "model.resnet_freeze_mode": ["none", "early", "all"],
+    "model.dnn_normalization": ["batchnorm", "layernorm", "none"],
+    "model.multimodal_model": ["concat", "cross_attention", "gmu"]
+  },  
   "data_root": "data",
   "project_root": ".",
   "tissue": "Breast",
@@ -16,12 +21,13 @@
   "model": {
     "resnet_backbone": "resnet50",
     "resnet_pretrained": true,
-    "resnet_freeze_mode": "early",
+    "resnet_freeze_mode": "all",
     "dnn_hidden_sizes": [
       1024,
       512
     ],
     "dnn_dropout": 0.4,
-    "dnn_normalization": "batchnorm"
+    "dnn_normalization": "none",
+    "multimodal_model": "cross_attention"
   }
 }

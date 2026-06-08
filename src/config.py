@@ -97,6 +97,7 @@ class ModelConfig:
     dnn_hidden_sizes: list = None
     dnn_dropout: float = _MODEL_CONFIG.get("dnn_dropout", 0.4)
     dnn_normalization: str = _MODEL_CONFIG.get("dnn_normalization", "batchnorm")
+    multimodal_model: str = _MODEL_CONFIG.get("multimodal_model", "cross_attention")
     
     def __post_init__(self):
         if self.dnn_hidden_sizes is None:
