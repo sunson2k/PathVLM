@@ -55,7 +55,8 @@ def main():
     # model = MultimodalDNN(
     #     num_genes=len(gene_names),
     #     hidden_dims=Config.model.dnn_hidden_sizes,
-    #     dropout=Config.model.dnn_dropout
+    #     dropout=Config.model.dnn_dropout,
+    #     normalization=Config.model.dnn_normalization
     # )
 
     ## Cross-Attention DNN (Text features modulate visual features via cross-attention). Use default hyperparameters for attention (embed_dim=512, num_heads=8)
@@ -63,6 +64,7 @@ def main():
         num_genes=len(gene_names),
         hidden_dims=Config.model.dnn_hidden_sizes,
         dropout=Config.model.dnn_dropout,
+        normalization=Config.model.dnn_normalization,
         # embed_dim=Config.model.embed_dim,
         # num_heads=Config.model.num_heads
     )

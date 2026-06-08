@@ -21,6 +21,7 @@
       1024,
       512
     ],
-    "dnn_dropout": 0.4
+    "dnn_dropout": 0.4,
+    "dnn_normalization": "batchnorm"
   }
 }

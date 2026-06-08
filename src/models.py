@@ -15,6 +15,9 @@ class ResNetRegressor(nn.Module):
         backbone: str = "resnet50",
         pretrained: bool = True,
         freeze_backbone: bool = True,
+        hidden_dims: List[int] = None,
+        dropout: float = 0.4,
+        normalization: str = "batchnorm",
     ):
         """
         Args:
@@ -22,6 +25,9 @@ class ResNetRegressor(nn.Module):
             backbone: ResNet backbone name
             pretrained: Use ImageNet pretrained weights
             freeze_backbone: Freeze layers 0-2, train only layers 3-4
+            hidden_dims: Regression head hidden layer dimensions
+            dropout: Dropout probability between head layers
+            normalization: Normalization layer for head hidden layers
         """
         super().__init__()
         if backbone != "resnet50":
@@ -40,12 +46,15 @@ class ResNetRegressor(nn.Module):
         # ResNet50 outputs 2048 dimensions from layer4
         backbone_out_dim = 2048
 
-        self.head = nn.Sequential(
-            nn.Linear(backbone_out_dim, 1024),
-            nn.ReLU(inplace=True),
-            nn.Linear(1024, 512),
-            nn.ReLU(inplace=True),
-            nn.Linear(512, num_genes),
+        if hidden_dims is None:
+            hidden_dims = [1024, 512]
+
+        self.head = MultiLayerDNN(
+            input_dim=backbone_out_dim,
+            hidden_dims=hidden_dims,
+            output_dim=num_genes,
+            dropout=dropout,
+            normalization=normalization,
         )
 
         # Remove original classification layer
@@ -65,7 +74,7 @@ class ResNetRegressor(nn.Module):
 
 
 class MultiLayerDNN(nn.Module):
-    """Multi-layer DNN for embedding-based prediction."""
+    """Configurable MLP regressor used by all prediction heads."""
 
     def __init__(
         self,
@@ -73,6 +82,7 @@ class MultiLayerDNN(nn.Module):
         hidden_dims: List[int],
         output_dim: int = 250,
         dropout: float = 0.4,
+        normalization: str = "batchnorm",
     ):
         """
         Args:
@@ -80,8 +90,15 @@ class MultiLayerDNN(nn.Module):
             hidden_dims: List of hidden layer dimensions
             output_dim: Output dimension (number of genes)
             dropout: Dropout probability between layers
+            normalization: One of "batchnorm", "layernorm", or "none"
         """
         super().__init__()
+        normalization = normalization.lower()
+        if normalization not in {"batchnorm", "layernorm", "none"}:
+            raise ValueError(
+                "Unsupported DNN normalization "
+                f"'{normalization}'. Use 'batchnorm', 'layernorm', or 'none'."
+            )
 
         layers = []
         prev_dim = input_dim
@@ -89,6 +106,10 @@ class MultiLayerDNN(nn.Module):
         # Build hidden layers
         for hidden_dim in hidden_dims:
             layers.append(nn.Linear(prev_dim, hidden_dim))
+            if normalization == "batchnorm":
+                layers.append(nn.BatchNorm1d(hidden_dim))
+            elif normalization == "layernorm":
+                layers.append(nn.LayerNorm(hidden_dim))
             layers.append(nn.ReLU(inplace=True))
             if dropout > 0:
                 layers.append(nn.Dropout(p=dropout))
@@ -114,13 +135,18 @@ class VisualDNN(MultiLayerDNN):
     """DNN for visual embeddings (1024-dim input)."""
 
     def __init__(
-        self, num_genes: int = 250, hidden_dims: List[int] = None, dropout: float = 0.4
+        self,
+        num_genes: int = 250,
+        hidden_dims: List[int] = None,
+        dropout: float = 0.4,
+        normalization: str = "batchnorm",
     ):
         """
         Args:
             num_genes: Output dimension
             hidden_dims: Hidden layer dimensions
             dropout: Dropout probability
+            normalization: Normalization layer for hidden layers
         """
         if hidden_dims is None:
             hidden_dims = [1024, 512]
@@ -130,6 +156,7 @@ class VisualDNN(MultiLayerDNN):
             hidden_dims=hidden_dims,
             output_dim=num_genes,
             dropout=dropout,
+            normalization=normalization,
         )
 
 
@@ -137,13 +164,18 @@ class MultimodalDNN(MultiLayerDNN):
     """DNN for multimodal embeddings (1536-dim input = 1024 visual + 512 text)."""
 
     def __init__(
-        self, num_genes: int = 250, hidden_dims: List[int] = None, dropout: float = 0.4
+        self,
+        num_genes: int = 250,
+        hidden_dims: List[int] = None,
+        dropout: float = 0.4,
+        normalization: str = "batchnorm",
     ):
         """
         Args:
             num_genes: Output dimension
             hidden_dims: Hidden layer dimensions
             dropout: Dropout probability
+            normalization: Normalization layer for hidden layers
         """
         if hidden_dims is None:
             hidden_dims = [1024, 512]
@@ -153,6 +185,7 @@ class MultimodalDNN(MultiLayerDNN):
             hidden_dims=hidden_dims,
             output_dim=num_genes,
             dropout=dropout,
+            normalization=normalization,
         )
 
 
@@ -171,6 +204,7 @@ class MultimodalCrossAttentionDNN(nn.Module):
         num_heads: int = 8,
         visual_input_dim: int = 1024,
         text_input_dim: int = 512,
+        normalization: str = "batchnorm",
     ):
         """
         Args:
@@ -181,6 +215,7 @@ class MultimodalCrossAttentionDNN(nn.Module):
             num_heads: Number of attention heads (must cleanly divide embed_dim)
             visual_input_dim: Input dimension for UNI visual embeddings
             text_input_dim: Input dimension for CONCH text embeddings
+            normalization: Normalization layer for downstream MLP hidden layers
         """
         super().__init__()
 
@@ -209,6 +244,7 @@ class MultimodalCrossAttentionDNN(nn.Module):
             hidden_dims=hidden_dims,
             output_dim=num_genes,
             dropout=dropout,
+            normalization=normalization,
         )
 
     def forward(

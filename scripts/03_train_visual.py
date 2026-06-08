@@ -52,7 +52,8 @@ def main():
     model = VisualDNN(
         num_genes=len(gene_names),
         hidden_dims=Config.model.dnn_hidden_sizes,
-        dropout=Config.model.dnn_dropout
+        dropout=Config.model.dnn_dropout,
+        normalization=Config.model.dnn_normalization
     )
     
     # Create trainer

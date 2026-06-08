@@ -59,13 +59,13 @@ def main():
 
     # Define pipeline steps
     pipeline_steps = [
-        ("01 - Data Preparation", os.path.join(script_dir, "01_prepare_data.py")),
+        # ("01 - Data Preparation", os.path.join(script_dir, "01_prepare_data.py")),
         ("02 - Train Image Model", os.path.join(script_dir, "02_train_image.py")),
         ("03 - Train Visual Model", os.path.join(script_dir, "03_train_visual.py")),
-        (
-            "04 - Train Multimodal Model",
-            os.path.join(script_dir, "04_train_multimodal.py"),
-        ),
+        # (
+        #    "04 - Train Multimodal Model",
+        #    os.path.join(script_dir, "04_train_multimodal.py"),
+        # ),
         ("05 - Compare Results", os.path.join(script_dir, "05_compare_results.py")),
         ("06 - Summarize Results", os.path.join(script_dir, "06_summarize_results.py")),
     ]

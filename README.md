@@ -34,7 +34,8 @@ Edit `configs/run_config.json` for your local data and output roots:
     "resnet_pretrained": true,
     "resnet_freeze_backbone": true,
     "dnn_hidden_sizes": [1024, 512],
-    "dnn_dropout": 0.4
+    "dnn_dropout": 0.4,
+    "dnn_normalization": "batchnorm"
   }
 }
 ```
@@ -49,9 +50,9 @@ This creates train/val/test splits (70/15/15) with verified alignment across all
 python scripts/run_pipeline.py
 ```
 Prepares data, trains three independent models, evaluates each model, and generates final comparison reports:
-- **Image Mode**: ResNet50 backbone → 250-gene output
-- **Visual Mode**: 1024-dim embeddings → DNN → 250-gene output
-- **Multimodal Mode**: 1536-dim (visual+text) embeddings → DNN → 250-gene output
+- **Image Mode**: ResNet50 backbone → shared DNN head → 250-gene output
+- **Visual Mode**: 1024-dim embeddings → shared DNN → 250-gene output
+- **Multimodal Mode**: 1536-dim (visual+text) embeddings → shared DNN → 250-gene output
 - **Reports**: `results/comparison_report.html`, `results/summary.md`, `results/loss_comparison.png`, `results/loss_per_model.png`
 
 Or train individually:
@@ -131,20 +132,21 @@ python scripts/06_summarize_results.py
 ### ResNetRegressor (Image Mode)
 - **Backbone**: ResNet50 (ImageNet pretrained, layers 3-4 trainable)
 - **Input**: RGB images (3, 224, 224)
-- **Architecture**: 2048 → 1024 → 512 → 250
+- **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
+- **Architecture**: 2048 → 1024 → 512 → 250 by default
 - **Output**: 250 gene expression values
 
 ### VisualDNN (Visual Embedding Mode)
 - **Input**: 1024-dim visual embeddings (UNI model)
 - **Architecture**: 1024 → 1024 → 512 → 250
 - **Dropout**: 0.4 between layers
-- **Normalization**: StandardScaler fitted on training data only
+- **Normalization**: BatchNorm inside the DNN by default; StandardScaler fitted on training data only for input features
 
 ### MultimodalDNN (Multimodal Mode)
-- **Input**: 1536-dim concatenated (1024 visual + 1024 text)
+- **Input**: 1536-dim concatenated (1024 visual + 512 text)
 - **Architecture**: 1536 → 1024 → 512 → 250
 - **Dropout**: 0.4 between layers
-- **Normalization**: StandardScaler fitted on training data only
+- **Normalization**: BatchNorm inside the DNN by default; StandardScaler fitted on training data only for input features
 
 ## Training Configuration
 
@@ -168,6 +170,7 @@ These values are configured in `configs/run_config.json`.
 - Gene column consistency validation
 
 ✅ **Proper Normalization**
+- BatchNorm inside all shared DNN hidden layers by default
 - StandardScaler fitted ONLY on training data (prevents leakage)
 - Separate scalers per feature mode
 - Scaled MSE loss for per-dimension normalization
