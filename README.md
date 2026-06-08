@@ -32,7 +32,7 @@ Edit `configs/run_config.json` for your local data and output roots:
   "model": {
     "resnet_backbone": "resnet50",
     "resnet_pretrained": true,
-    "resnet_freeze_backbone": true,
+    "resnet_freeze_mode": "early",
     "dnn_hidden_sizes": [1024, 512],
     "dnn_dropout": 0.4,
     "dnn_normalization": "batchnorm"
@@ -130,7 +130,8 @@ python scripts/06_summarize_results.py
 ## Model Specifications
 
 ### ResNetRegressor (Image Mode)
-- **Backbone**: ResNet50 (ImageNet pretrained, layers 3-4 trainable)
+- **Backbone**: ResNet50 (ImageNet pretrained by default)
+- **Freeze Mode**: `none`, `early`, or `all`; `early` freezes all backbone layers except `layer3` and `layer4`
 - **Input**: RGB images (3, 224, 224)
 - **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
 - **Architecture**: 2048 → 1024 → 512 → 250 by default

@@ -91,7 +91,7 @@ class ModelConfig:
     # ResNet
     resnet_backbone: str = _MODEL_CONFIG.get("resnet_backbone", "resnet50")
     resnet_pretrained: bool = _MODEL_CONFIG.get("resnet_pretrained", True)
-    resnet_freeze_backbone: bool = _MODEL_CONFIG.get("resnet_freeze_backbone", True)
+    resnet_freeze_mode: str = _MODEL_CONFIG.get("resnet_freeze_mode", "early")
     
     # DNN
     dnn_hidden_sizes: list = None

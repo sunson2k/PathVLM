@@ -56,7 +56,7 @@ def main():
         num_genes=len(gene_names),
         backbone=Config.model.resnet_backbone,
         pretrained=Config.model.resnet_pretrained,
-        freeze_backbone=Config.model.resnet_freeze_backbone,
+        freeze_mode=Config.model.resnet_freeze_mode,
         hidden_dims=Config.model.dnn_hidden_sizes,
         dropout=Config.model.dnn_dropout,
         normalization=Config.model.dnn_normalization

@@ -14,7 +14,7 @@ class ResNetRegressor(nn.Module):
         num_genes: int = 250,
         backbone: str = "resnet50",
         pretrained: bool = True,
-        freeze_backbone: bool = True,
+        freeze_mode: str = "early",
         hidden_dims: List[int] = None,
         dropout: float = 0.4,
         normalization: str = "batchnorm",
@@ -24,7 +24,9 @@ class ResNetRegressor(nn.Module):
             num_genes: Output dimension (number of genes)
             backbone: ResNet backbone name
             pretrained: Use ImageNet pretrained weights
-            freeze_backbone: Freeze layers 0-2, train only layers 3-4
+            freeze_mode: ResNet training mode. One of "none", "early", or "all".
+                "early" freezes all layers except layer3/layer4. "all" freezes
+                the full ResNet backbone.
             hidden_dims: Regression head hidden layer dimensions
             dropout: Dropout probability between head layers
             normalization: Normalization layer for head hidden layers
@@ -36,8 +38,17 @@ class ResNetRegressor(nn.Module):
         # Load ResNet50 backbone
         self.backbone = models.resnet50(weights="IMAGENET1K_V2" if pretrained else None)
 
-        # Freeze early layers if requested (keep layers 3-4 trainable)
-        if freeze_backbone:
+        freeze_mode = freeze_mode.lower()
+        if freeze_mode not in {"none", "early", "all"}:
+            raise ValueError(
+                "Unsupported ResNet freeze mode "
+                f"'{freeze_mode}'. Use 'none', 'early', or 'all'."
+            )
+
+        if freeze_mode == "all":
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+        elif freeze_mode == "early":
             for name, param in self.backbone.named_parameters():
                 if "layer3" not in name and "layer4" not in name:
                     param.requires_grad = False
