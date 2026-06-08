@@ -76,7 +76,7 @@ python scripts/06_summarize_results.py
 │       └── {spot_id}.png
 ├── ST-features-UNI/                   # Visual embeddings (1024-dim)
 │   └── {tissue_id}_features.csv
-├── ST-features-CONCH-text/            # Text embeddings (1024-dim)
+├── ST-features-CONCH-text/            # Text embeddings (512-dim)
 │   └── {tissue_id}_text_features.csv
 ├── ST-expression-top-8n/              # Expression targets (250 genes)
 │   └── {tissue_id}_expression.csv
