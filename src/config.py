@@ -37,6 +37,7 @@ class DataConfig:
     """Data configuration."""
     data_root: str = _resolve_from_project_root(_RUN_CONFIG.get("data_root", ""))
     tissue: str = _RUN_CONFIG.get("tissue", "Breast")
+    expr_target: str = _RUN_CONFIG.get("expr_target", "8n").lower()
     
     # Data folders
     patch_dir: str = "ST-patches"
@@ -57,6 +58,17 @@ class DataConfig:
     test_ratio: float = 0.15
     random_seed: int = 42
 
+    @property
+    def expr_dir(self) -> str:
+        if self.expr_target == "8n":
+            return self.expr_8n_dir
+        if self.expr_target == "spcs":
+            return self.expr_spcs_dir
+        raise ValueError(
+            f"Unsupported expr_target '{self.expr_target}'. "
+            "Use '8n' or 'spcs' in configs/run_config.json."
+        )
+
 
 @dataclass
 class TrainingConfig:
@@ -66,7 +78,7 @@ class TrainingConfig:
     learning_rate: float = _TRAINING_CONFIG.get("learning_rate", 3e-4)
     weight_decay: float = _TRAINING_CONFIG.get("weight_decay", 1e-4)
     max_epochs: int = _TRAINING_CONFIG.get("max_epochs", 100)
-    early_stop_patience: int = _TRAINING_CONFIG.get("early_stop_patience", 2)
+    early_stop_patience: int = _TRAINING_CONFIG.get("early_stop_patience", 6)
     device: str = _TRAINING_CONFIG.get("device", "cuda")
     
     # Loss

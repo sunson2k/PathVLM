@@ -37,15 +37,15 @@ def main():
         feature_mode='image',
         batch_size=Config.training.batch_size,
         num_workers=Config.training.num_workers,
-        expr_csv_dir=Config.data.expr_8n_dir,
+        expr_csv_dir=Config.data.expr_dir,
         data_root=Config.data.data_root
     )
     
     # Get gene names for evaluation
     import pandas as pd
+    expr_root = os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_dir)
     expr_df = pd.read_csv(
-        os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_8n_dir,
-                     os.listdir(os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_8n_dir))[0]),
+        os.path.join(expr_root, os.listdir(expr_root)[0]),
         index_col=0
     )
     gene_names = expr_df.columns.str.strip().tolist()
@@ -69,6 +69,7 @@ def main():
         device=device,
         learning_rate=Config.training.learning_rate,
         weight_decay=Config.training.weight_decay,
+        loss_eps=Config.training.loss_eps,
         checkpoint_dir=checkpoint_dir,
         mode_name='image'
     )
@@ -93,6 +94,7 @@ def main():
         test_loader=test_loader,
         gene_names=gene_names,
         device=device,
+        loss_eps=Config.training.loss_eps,
         output_dir=eval_dir,
         mode_name='image'
     )

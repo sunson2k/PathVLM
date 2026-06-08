@@ -69,7 +69,7 @@ def main():
     parser.add_argument('--output-comparison-img', type=Path, default=results_dir / 'loss_comparison.png', help='Output comparison loss plot image')
     parser.add_argument('--output-per-model-img', type=Path, default=results_dir / 'loss_per_model.png', help='Output per-model loss plot image')
     parser.add_argument('--tissue', type=str, default=Config.data.tissue, help='Tissue name for summary labels')
-    parser.add_argument('--expr-name', type=str, default='8n', help='Expression target name for summary labels')
+    parser.add_argument('--expr-name', type=str, default=Config.data.expr_target, help='Expression target name for summary labels')
     args = parser.parse_args()
 
     modes = ['image', 'visual', 'multimodal']

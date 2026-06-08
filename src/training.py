@@ -85,6 +85,7 @@ class Trainer:
                  device: str = "cuda",
                  learning_rate: float = 3e-4,
                  weight_decay: float = 1e-4,
+                 loss_eps: float = 1e-6,
                  checkpoint_dir: str = None,
                  mode_name: str = "model"):
         """
@@ -96,6 +97,7 @@ class Trainer:
             device: Device to train on ('cuda' or 'cpu')
             learning_rate: Initial learning rate
             weight_decay: L2 regularization
+            loss_eps: Small epsilon for scaled MSE normalization
             checkpoint_dir: Directory to save checkpoints
             mode_name: Name of mode for logging (e.g., 'image', 'visual', 'multimodal')
         """
@@ -105,6 +107,7 @@ class Trainer:
         self.test_loader = test_loader
         self.device = device
         self.mode_name = mode_name
+        self.loss_eps = loss_eps
         
         self.optimizer = Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -138,7 +141,7 @@ class Trainer:
             # Forward pass
             self.optimizer.zero_grad()
             predictions = self.model(features)
-            loss = scaled_mse_loss(predictions, targets)
+            loss = scaled_mse_loss(predictions, targets, eps=self.loss_eps)
             
             # Backward pass
             loss.backward()
@@ -164,7 +167,7 @@ class Trainer:
             targets = targets.to(self.device)
             
             predictions = self.model(features)
-            loss = scaled_mse_loss(predictions, targets)
+            loss = scaled_mse_loss(predictions, targets, eps=self.loss_eps)
             total_loss += loss.item() * features.size(0)
         
         avg_loss = total_loss / len(dataloader.dataset)
@@ -193,7 +196,7 @@ class Trainer:
             self.history = checkpoint['history']
         logger.info(f"Loaded checkpoint: {path}")
     
-    def train(self, max_epochs: int = 100, early_stop_patience: int = 2) -> Dict:
+    def train(self, max_epochs: int = 100, early_stop_patience: int = 6) -> Dict:
         """
         Train the model.
         
