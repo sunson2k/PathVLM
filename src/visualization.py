@@ -35,7 +35,6 @@ def plot_loss_curves(history_dirs: Dict[str, str],
         for idx, mode_name in enumerate(history_dirs)
     }
     
-    all_losses = []
     for mode_name, history_path in history_dirs.items():
         with open(history_path, 'r') as f:
             history = json.load(f)
@@ -51,17 +50,6 @@ def plot_loss_curves(history_dirs: Dict[str, str],
         # Test loss
         axes[2].plot(history['test_loss'], label=mode_name, color=color, linewidth=2)
         
-        all_losses.extend(history['train_loss'])
-        all_losses.extend(history['val_loss'])
-        all_losses.extend(history['test_loss'])
-    
-    if all_losses:
-        global_min = min(all_losses)
-        global_max = max(all_losses)
-        padding = (global_max - global_min) * 0.05 if global_max > global_min else 0.1
-        for ax in axes:
-            ax.set_ylim(global_min - padding, global_max + padding)
-    
     # Format subplots
     for idx, (ax, title) in enumerate(zip(axes, ['Training Loss', 'Validation Loss', 'Test Loss'])):
         ax.set_xlabel('Epoch', fontsize=12)
@@ -107,7 +95,6 @@ def plot_per_model_loss_curves(history_dirs: Dict[str, str],
 
     loss_colors = {'train': 'red', 'val': 'orange', 'test': 'green'}
     
-    all_losses = []
     for idx, mode_name in enumerate(mode_names):
         history_path = history_dirs.get(mode_name)
         if not history_path:
@@ -124,24 +111,12 @@ def plot_per_model_loss_curves(history_dirs: Dict[str, str],
         axes[idx].plot(history['test_loss'], label='Test', 
                       color=loss_colors['test'], linewidth=2)
         
-        all_losses.extend(history['train_loss'])
-        all_losses.extend(history['val_loss'])
-        all_losses.extend(history['test_loss'])
-        
         axes[idx].set_title(mode_name, fontsize=13, fontweight='bold')
         axes[idx].set_xlabel('Epoch', fontsize=12)
         axes[idx].set_ylabel('Loss', fontsize=12)
         axes[idx].legend(fontsize=11)
         axes[idx].grid(True, alpha=0.3)
-    
-    # Apply shared y-axis limits
-    if all_losses:
-        global_min = min(all_losses)
-        global_max = max(all_losses)
-        padding = (global_max - global_min) * 0.05 if global_max > global_min else 0.1
-        for ax in axes:
-            ax.set_ylim(global_min - padding, global_max + padding)
-    
+
     plt.tight_layout()
     
     output_path = os.path.join(output_dir, save_name)
