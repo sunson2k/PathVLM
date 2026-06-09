@@ -116,7 +116,7 @@ python scripts/06_summarize_results.py
 │   ├── val_split.csv
 │   └── test_split.csv
 ├── results/                           # Model outputs
-│   ├── image_mode/
+│   ├── image_<resnet_freeze_mode>/
 │   │   ├── checkpoints/
 │   │   │   ├── best_model.pt
 │   │   │   └── history.json
@@ -124,7 +124,7 @@ python scripts/06_summarize_results.py
 │   │       ├── summary.json
 │   │       └── {train|val|test}_*.csv
 │   ├── visual_mode/
-│   └── multimodal_mode/
+│   └── multimodal_<multimodal_model>/
 └── notebooks/                         # For EDA & visualization
 ```
 
@@ -211,7 +211,7 @@ Each model generates:
 After training completes, results are saved to `{project_root}/results/`:
 
 ```
-image_mode/
+image_<resnet_freeze_mode>/
 ├── checkpoints/
 │   ├── best_model.pt              # Best model weights
 │   ├── history.json               # Loss trajectory
@@ -224,6 +224,9 @@ image_mode/
     ├── train_predictions.csv      # Predictions & targets
     ├── val_predictions.csv
     └── test_predictions.csv
+
+visual_mode/
+multimodal_<multimodal_model>/
 
 loss_comparison.png               # Loss curves overlay
 loss_per_model.png                # Per-model loss curves

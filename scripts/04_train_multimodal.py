@@ -82,9 +82,7 @@ def main():
     model = create_multimodal_model(num_genes=len(gene_names))
 
     # Create trainer
-    checkpoint_dir = os.path.join(
-        Config.paths.results_dir, "multimodal_mode", "checkpoints"
-    )
+    checkpoint_dir = os.path.join(Config.paths.multimodal_results_dir, "checkpoints")
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -110,7 +108,7 @@ def main():
 
     # Evaluate
     logger.info("Evaluating on all splits...")
-    eval_dir = os.path.join(Config.paths.results_dir, "multimodal_mode", "evaluation")
+    eval_dir = os.path.join(Config.paths.multimodal_results_dir, "evaluation")
     results = evaluate_all_splits(
         model=trainer.model,
         train_loader=train_loader,

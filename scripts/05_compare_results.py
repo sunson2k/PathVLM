@@ -31,9 +31,8 @@ def main():
     
     # Paths to history files for each mode
     history_dirs = {
-        'image': os.path.join(results_dir, 'image_mode', 'checkpoints', 'history.json'),
-        'visual': os.path.join(results_dir, 'visual_mode', 'checkpoints', 'history.json'),
-        'multimodal': os.path.join(results_dir, 'multimodal_mode', 'checkpoints', 'history.json')
+        mode: os.path.join(result_dir, 'checkpoints', 'history.json')
+        for mode, result_dir in Config.paths.model_results_dirs.items()
     }
     
     # Filter to only existing files
@@ -52,11 +51,7 @@ def main():
     
     # Generate comparison report
     logger.info("Generating comparison report...")
-    results_dirs = {
-        'image': os.path.join(results_dir, 'image_mode'),
-        'visual': os.path.join(results_dir, 'visual_mode'),
-        'multimodal': os.path.join(results_dir, 'multimodal_mode')
-    }
+    results_dirs = Config.paths.model_results_dirs
     
     report_path = generate_comparison_report(
         results_dirs=results_dirs,

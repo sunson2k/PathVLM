@@ -100,6 +100,9 @@ class ModelConfig:
     multimodal_model: str = _MODEL_CONFIG.get("multimodal_model", "cross_attention")
     
     def __post_init__(self):
+        self.resnet_freeze_mode = self.resnet_freeze_mode.lower()
+        self.dnn_normalization = self.dnn_normalization.lower()
+        self.multimodal_model = self.multimodal_model.lower()
         if self.dnn_hidden_sizes is None:
             self.dnn_hidden_sizes = _MODEL_CONFIG.get("dnn_hidden_sizes", [1024, 512])
 
@@ -124,6 +127,38 @@ class PathConfig:
     @property
     def results_dir(self) -> str:
         return os.path.join(self.project_root, "results")
+
+    @property
+    def image_results_name(self) -> str:
+        return f"image_{Config.model.resnet_freeze_mode}"
+
+    @property
+    def visual_results_name(self) -> str:
+        return "visual_mode"
+
+    @property
+    def multimodal_results_name(self) -> str:
+        return f"multimodal_{Config.model.multimodal_model}"
+
+    @property
+    def image_results_dir(self) -> str:
+        return os.path.join(self.results_dir, self.image_results_name)
+
+    @property
+    def visual_results_dir(self) -> str:
+        return os.path.join(self.results_dir, self.visual_results_name)
+
+    @property
+    def multimodal_results_dir(self) -> str:
+        return os.path.join(self.results_dir, self.multimodal_results_name)
+
+    @property
+    def model_results_dirs(self) -> dict:
+        return {
+            "image": self.image_results_dir,
+            "visual": self.visual_results_dir,
+            "multimodal": self.multimodal_results_dir,
+        }
     
     @property
     def notebooks_dir(self) -> str:

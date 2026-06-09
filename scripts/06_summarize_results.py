@@ -77,7 +77,7 @@ def main():
     history_files = {}
 
     for mode in modes:
-        mode_dir = f'{mode}_mode'
+        mode_dir = Path(Config.paths.model_results_dirs[mode]).name
         summary = load_summary_metrics(args.results_dir, mode_dir)
         metrics['mse_loss'][mode] = summary['test']['mse_loss']
         metrics['mean_pearson'][mode] = summary['test']['mean_pearson']

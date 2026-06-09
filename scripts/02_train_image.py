@@ -63,7 +63,7 @@ def main():
     )
     
     # Create trainer
-    checkpoint_dir = os.path.join(Config.paths.results_dir, 'image_mode', 'checkpoints')
+    checkpoint_dir = os.path.join(Config.paths.image_results_dir, 'checkpoints')
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -89,7 +89,7 @@ def main():
     
     # Evaluate
     logger.info("Evaluating on all splits...")
-    eval_dir = os.path.join(Config.paths.results_dir, 'image_mode', 'evaluation')
+    eval_dir = os.path.join(Config.paths.image_results_dir, 'evaluation')
     results = evaluate_all_splits(
         model=trainer.model,
         train_loader=train_loader,
