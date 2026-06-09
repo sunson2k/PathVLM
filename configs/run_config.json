@@ -21,7 +21,7 @@
   "model": {
     "resnet_backbone": "resnet50",
     "resnet_pretrained": true,
-    "resnet_freeze_mode": "all",
+    "resnet_freeze_mode": "early",
     "dnn_hidden_sizes": [
       1024,
       512

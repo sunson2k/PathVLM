@@ -308,14 +308,77 @@ class MultimodalCrossAttentionDNN(nn.Module):
 
 
 class MultimodalGMUDNN(nn.Module):
-    """Placeholder for a multimodal Gated Multimodal Unit model."""
+    """DNN that fuses UNI and CONCH embeddings using a Gated Multimodal Unit."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        num_genes: int = 250,
+        hidden_dims: List[int] = None,
+        dropout: float = 0.4,
+        fusion_dim: int = 512,
+        visual_input_dim: int = 1024,
+        text_input_dim: int = 512,
+        normalization: str = "batchnorm",
+    ):
+        """
+        Args:
+            num_genes: Output dimension (number of genes)
+            hidden_dims: Downstream MLP hidden layer dimensions
+            dropout: Dropout probability
+            fusion_dim: Shared hidden dimension for the gated fusion
+            visual_input_dim: Input dimension for UNI visual embeddings
+            text_input_dim: Input dimension for CONCH text embeddings
+            normalization: Normalization layer for downstream MLP hidden layers
+        """
         super().__init__()
-        raise NotImplementedError(
-            "MultimodalGMUDNN is a placeholder. Implement the GMU architecture "
-            "in src/models.py before selecting model.multimodal_model='gmu'."
+
+        if hidden_dims is None:
+            hidden_dims = [512, 256]
+
+        self.visual_input_dim = visual_input_dim
+        self.text_input_dim = text_input_dim
+
+        self.visual_projection = nn.Linear(visual_input_dim, fusion_dim)
+        self.text_projection = nn.Linear(text_input_dim, fusion_dim)
+        self.gate_projection = nn.Linear(visual_input_dim + text_input_dim, fusion_dim)
+
+        self.regressor = MultiLayerDNN(
+            input_dim=fusion_dim,
+            hidden_dims=hidden_dims,
+            output_dim=num_genes,
+            dropout=dropout,
+            normalization=normalization,
         )
+
+    def forward(
+        self, visual_x: torch.Tensor, text_x: torch.Tensor = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            visual_x: Either UNI embeddings, shape (batch_size, 1024), or
+                concatenated UNI + CONCH embeddings, shape (batch_size, 1536)
+            text_x: Optional CONCH embeddings, shape (batch_size, 512)
+        Returns:
+            Continuous predictions, shape (batch_size, num_genes)
+        """
+        if text_x is None:
+            expected_dim = self.visual_input_dim + self.text_input_dim
+            if visual_x.dim() != 2 or visual_x.size(1) != expected_dim:
+                raise ValueError(
+                    "MultimodalGMUDNN expected either (visual_x, text_x) or one "
+                    f"concatenated tensor with {expected_dim} features, got shape "
+                    f"{tuple(visual_x.shape)}."
+                )
+            visual_x, text_x = torch.split(
+                visual_x, [self.visual_input_dim, self.text_input_dim], dim=1
+            )
+
+        h_v = torch.tanh(self.visual_projection(visual_x))
+        h_t = torch.tanh(self.text_projection(text_x))
+        z = torch.sigmoid(self.gate_projection(torch.cat([visual_x, text_x], dim=1)))
+        fused_embedding = z * h_v + (1 - z) * h_t
+
+        return self.regressor(fused_embedding)
 
 
 def scaled_mse_loss(
@@ -375,10 +438,16 @@ if __name__ == "__main__":
     # Test MultimodalCrossAttentionDNN with current dataloader contract
     model4 = MultimodalCrossAttentionDNN(num_genes=250, dropout=0.4)
     y4 = model4(x3)
-    assert (
-        y4.shape == (2, 250)
-    ), f"MultimodalCrossAttentionDNN output shape mismatch: {y4.shape}"
+    assert y4.shape == (2, 250), (
+        f"MultimodalCrossAttentionDNN output shape mismatch: {y4.shape}"
+    )
     print(f"✓ MultimodalCrossAttentionDNN output shape: {y4.shape}")
+
+    # Test MultimodalGMUDNN with current dataloader contract
+    model5 = MultimodalGMUDNN(num_genes=250, dropout=0.4)
+    y5 = model5(x3)
+    assert y5.shape == (2, 250), f"MultimodalGMUDNN output shape mismatch: {y5.shape}"
+    print(f"✓ MultimodalGMUDNN output shape: {y5.shape}")
 
     # Test loss function
     y_hat = torch.randn(8, 250)

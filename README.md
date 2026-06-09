@@ -147,7 +147,6 @@ python scripts/06_summarize_results.py
 ### Multimodal Models (Multimodal Mode)
 - **Config**: `model.multimodal_model`
 - **Options**: `concat`, `cross_attention`, or `gmu`
-- **GMU Status**: Placeholder only; selecting `gmu` raises `NotImplementedError` until implemented
 
 ### MultimodalDNN
 - **Input**: 1536-dim concatenated (1024 visual + 512 text)
@@ -158,6 +157,11 @@ python scripts/06_summarize_results.py
 ### MultimodalCrossAttentionDNN
 - **Input**: 1536-dim concatenated (1024 visual + 512 text), split internally into visual and text embeddings
 - **Fusion**: Text embedding modulates visual embedding through cross-attention
+- **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
+
+### MultimodalGMUDNN
+- **Input**: 1536-dim concatenated (1024 visual + 512 text), split internally into visual and text embeddings
+- **Fusion**: Projects each modality into a shared hidden space, learns a sigmoid gate from the original concatenated input, and blends the projected visual/text states elementwise
 - **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
 
 ## Training Configuration
