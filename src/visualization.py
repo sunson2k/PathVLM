@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 def plot_loss_curves(history_dirs: Dict[str, str], 
                      output_dir: str = None,
-                     save_name: str = "loss_comparison.png") -> str:
+                     save_name: str = "loss_comparison.png",
+                     y_min: float = None,
+                     y_max: float = None) -> str:
     """
     Plot loss curves for all modes (comparison view: train/val/test splits with all models).
     
@@ -55,6 +57,8 @@ def plot_loss_curves(history_dirs: Dict[str, str],
         ax.set_xlabel('Epoch', fontsize=12)
         ax.set_ylabel('Loss', fontsize=12)
         ax.set_title(title, fontsize=13, fontweight='bold')
+        if y_min is not None or y_max is not None:
+            ax.set_ylim(bottom=y_min, top=y_max)
         ax.legend(fontsize=11)
         ax.grid(True, alpha=0.3)
     
@@ -70,7 +74,9 @@ def plot_loss_curves(history_dirs: Dict[str, str],
 
 def plot_per_model_loss_curves(history_dirs: Dict[str, str],
                                output_dir: str = None,
-                               save_name: str = "loss_per_model.png") -> str:
+                               save_name: str = "loss_per_model.png",
+                               y_min: float = None,
+                               y_max: float = None) -> str:
     """
     Plot loss curves for each model individually (per-model view: each model has 3 curves).
     
@@ -114,6 +120,8 @@ def plot_per_model_loss_curves(history_dirs: Dict[str, str],
         axes[idx].set_title(mode_name, fontsize=13, fontweight='bold')
         axes[idx].set_xlabel('Epoch', fontsize=12)
         axes[idx].set_ylabel('Loss', fontsize=12)
+        if y_min is not None or y_max is not None:
+            axes[idx].set_ylim(bottom=y_min, top=y_max)
         axes[idx].legend(fontsize=11)
         axes[idx].grid(True, alpha=0.3)
 

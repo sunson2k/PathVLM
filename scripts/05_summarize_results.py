@@ -36,6 +36,8 @@ def build_markdown(
     output_path: Path,
     tissue: str | None,
     expr_name: str | None,
+    y_min: float | None,
+    y_max: float | None,
 ):
     title_detail = ''
     if tissue and expr_name:
@@ -59,6 +61,13 @@ def build_markdown(
         f'| {metric_prefix}Pearson{metric_suffix} | '
         + ' | '.join(_format_metric(table_rows['mean_pearson'].get(name), 4) for name in setup_names)
         + ' |'
+    )
+
+    y_axis_note = (
+        f'- Plot Y-axis ranges are fixed to {y_min if y_min is not None else "auto"}'
+        f' to {y_max if y_max is not None else "auto"} for this generated view.'
+        if y_min is not None or y_max is not None
+        else '- Plot Y-axis ranges are selected independently per subplot for readability.'
     )
 
     lines = [
@@ -93,7 +102,7 @@ def build_markdown(
         '- Any folder under `results/` with `evaluation/summary.json` is included automatically.',
         '- Result folders under `results/old` are excluded.',
         '- Both loss charts are created from the saved checkpoint histories for each setup.',
-        '- Plot Y-axis ranges are selected independently per subplot for readability.',
+        y_axis_note,
     ]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text('\n'.join(lines), encoding='utf-8')
@@ -109,7 +118,12 @@ def main():
     parser.add_argument('--output-per-model-img', type=Path, default=results_dir / 'loss_per_model.png', help='Output per-model loss plot image')
     parser.add_argument('--tissue', type=str, default=None, help='Optional tissue name for summary labels')
     parser.add_argument('--expr-name', type=str, default=None, help='Optional expression target name for summary labels')
+    parser.add_argument('--y-min', type=float, default=None, help='Optional lower Y-axis bound for generated loss plots')
+    parser.add_argument('--y-max', type=float, default=None, help='Optional upper Y-axis bound for generated loss plots')
     args = parser.parse_args()
+
+    if args.y_min is not None and args.y_max is not None and args.y_min >= args.y_max:
+        raise ValueError('--y-min must be less than --y-max')
 
     metrics = {'mse_loss': {}, 'mean_pearson': {}}
     results_dirs = discover_result_dirs(args.results_dir)
@@ -126,8 +140,20 @@ def main():
     comparison_img_path = None
     per_model_img_path = None
     if history_files:
-        comparison_img_path = plot_loss_curves(history_files, args.output_comparison_img.parent, args.output_comparison_img.name)
-        per_model_img_path = plot_per_model_loss_curves(history_files, args.output_per_model_img.parent, args.output_per_model_img.name)
+        comparison_img_path = plot_loss_curves(
+            history_files,
+            args.output_comparison_img.parent,
+            args.output_comparison_img.name,
+            y_min=args.y_min,
+            y_max=args.y_max,
+        )
+        per_model_img_path = plot_per_model_loss_curves(
+            history_files,
+            args.output_per_model_img.parent,
+            args.output_per_model_img.name,
+            y_min=args.y_min,
+            y_max=args.y_max,
+        )
     md_path = build_markdown(
         metrics,
         Path(comparison_img_path) if comparison_img_path else None,
@@ -135,6 +161,8 @@ def main():
         args.output_md,
         args.tissue,
         args.expr_name,
+        args.y_min,
+        args.y_max,
     )
 
     print(f'Created summary markdown: {md_path}')
