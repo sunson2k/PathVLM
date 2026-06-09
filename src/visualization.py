@@ -2,9 +2,7 @@
 import os
 import json
 import matplotlib.pyplot as plt
-import numpy as np
-from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,14 +29,18 @@ def plot_loss_curves(history_dirs: Dict[str, str],
     
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     
-    colors = {'image': 'blue', 'visual': 'orange', 'multimodal': 'green'}
+    color_map = plt.get_cmap('tab10')
+    colors = {
+        mode_name: color_map(idx % color_map.N)
+        for idx, mode_name in enumerate(history_dirs)
+    }
     
     all_losses = []
     for mode_name, history_path in history_dirs.items():
         with open(history_path, 'r') as f:
             history = json.load(f)
         
-        color = colors.get(mode_name, 'black')
+        color = colors[mode_name]
         
         # Train loss
         axes[0].plot(history['train_loss'], label=mode_name, color=color, linewidth=2)
@@ -97,9 +99,12 @@ def plot_per_model_loss_curves(history_dirs: Dict[str, str],
     
     os.makedirs(output_dir, exist_ok=True)
     
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-    
-    mode_names = ['image', 'visual', 'multimodal']
+    mode_names = list(history_dirs.keys())
+    fig_width = max(6, min(24, 6 * len(mode_names)))
+    fig, axes = plt.subplots(1, len(mode_names), figsize=(fig_width, 5))
+    if len(mode_names) == 1:
+        axes = [axes]
+
     loss_colors = {'train': 'red', 'val': 'orange', 'test': 'green'}
     
     all_losses = []
@@ -123,7 +128,7 @@ def plot_per_model_loss_curves(history_dirs: Dict[str, str],
         all_losses.extend(history['val_loss'])
         all_losses.extend(history['test_loss'])
         
-        axes[idx].set_title(f'{mode_name.capitalize()} Model', fontsize=13, fontweight='bold')
+        axes[idx].set_title(mode_name, fontsize=13, fontweight='bold')
         axes[idx].set_xlabel('Epoch', fontsize=12)
         axes[idx].set_ylabel('Loss', fontsize=12)
         axes[idx].legend(fontsize=11)
@@ -144,114 +149,4 @@ def plot_per_model_loss_curves(history_dirs: Dict[str, str],
     logger.info(f"Saved per-model loss curves: {output_path}")
     plt.close()
     
-    return output_path
-
-
-
-def generate_comparison_report(results_dirs: Dict[str, str],
-                              output_path: str = None) -> str:
-    """
-    Generate HTML comparison report.
-    
-    Args:
-        results_dirs: Dict mapping mode name to results directory
-        output_path: Path to save HTML report
-    
-    Returns:
-        Path to saved HTML file
-    """
-    if output_path is None:
-        output_path = os.path.join(os.path.dirname(next(iter(results_dirs.values()))), 
-                                   "comparison_report.html")
-    
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>PathVLM - Comparison Report</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { color: #333; }
-            table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-            th { background-color: #4CAF50; color: white; }
-            tr:nth-child(even) { background-color: #f2f2f2; }
-            .metric { font-weight: bold; }
-        </style>
-    </head>
-    <body>
-        <h1>PathVLM: Multi-Modal Gene Expression Prediction - Comparison Report</h1>
-    """
-    
-    # Load metrics for each mode
-    metrics_data = {}
-    for mode_name, results_dir in results_dirs.items():
-        summary_path = os.path.join(results_dir, 'evaluation', 'summary.json')
-        if os.path.exists(summary_path):
-            with open(summary_path, 'r') as f:
-                metrics_data[mode_name] = json.load(f)
-    
-    if metrics_data:
-        # Add comparison table
-        html += """
-        <h2>Loss Comparison</h2>
-        <table>
-            <tr>
-                <th>Mode</th>
-                <th>Train Loss</th>
-                <th>Val Loss</th>
-                <th>Test Loss</th>
-            </tr>
-        """
-        
-        for mode_name in ['image', 'visual', 'multimodal']:
-            if mode_name in metrics_data:
-                data = metrics_data[mode_name]
-                html += f"""
-            <tr>
-                <td class='metric'>{mode_name.upper()}</td>
-                <td>{data['train']['mse_loss']:.6f}</td>
-                <td>{data['val']['mse_loss']:.6f}</td>
-                <td>{data['test']['mse_loss']:.6f}</td>
-            </tr>
-                """
-        
-        html += "</table>"
-        
-        # Add Pearson correlation comparison
-        html += """
-        <h2>Mean Pearson Correlation</h2>
-        <table>
-            <tr>
-                <th>Mode</th>
-                <th>Train</th>
-                <th>Val</th>
-                <th>Test</th>
-            </tr>
-        """
-        
-        for mode_name in ['image', 'visual', 'multimodal']:
-            if mode_name in metrics_data:
-                data = metrics_data[mode_name]
-                html += f"""
-            <tr>
-                <td class='metric'>{mode_name.upper()}</td>
-                <td>{data['train'].get('mean_pearson', 'N/A')}</td>
-                <td>{data['val'].get('mean_pearson', 'N/A')}</td>
-                <td>{data['test'].get('mean_pearson', 'N/A')}</td>
-            </tr>
-                """
-        
-        html += "</table>"
-    
-    html += """
-    </body>
-    </html>
-    """
-    
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w') as f:
-        f.write(html)
-    
-    logger.info(f"Saved comparison report: {output_path}")
     return output_path

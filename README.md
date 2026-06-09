@@ -50,11 +50,11 @@ This creates train/val/test splits (70/15/15) with verified alignment across all
 ```bash
 python scripts/run_pipeline.py
 ```
-Prepares data, trains three independent models, evaluates each model, and generates final comparison reports:
+Prepares data, trains three independent models, evaluates each model, and generates the final Markdown summary:
 - **Image Mode**: ResNet50 backbone → shared DNN head → 250-gene output
 - **Visual Mode**: 1024-dim embeddings → shared DNN → 250-gene output
 - **Multimodal Mode**: 1536-dim (visual+text) embeddings → configured multimodal model → 250-gene output
-- **Reports**: `results/comparison_report.html`, `results/summary.md`, `results/loss_comparison.png`, `results/loss_per_model.png`
+- **Reports**: `results/summary.md`, `results/loss_comparison.png`, `results/loss_per_model.png`
 
 Or train individually:
 ```bash
@@ -65,8 +65,7 @@ python scripts/04_train_multimodal.py
 
 ### 4. Regenerate Reports Only
 ```bash
-python scripts/05_compare_results.py
-python scripts/06_summarize_results.py
+python scripts/05_summarize_results.py
 ```
 
 ## Data Structure
@@ -108,8 +107,7 @@ python scripts/06_summarize_results.py
 │   ├── 02_train_image.py              # Train image model
 │   ├── 03_train_visual.py             # Train visual model
 │   ├── 04_train_multimodal.py         # Train multimodal model
-│   ├── 05_compare_results.py          # Generate HTML comparison report
-│   ├── 06_summarize_results.py        # Generate markdown summary and loss plots
+│   ├── 05_summarize_results.py        # Generate markdown summary and loss plots
 │   └── run_pipeline.py                # Master orchestrator
 ├── data_splits/                       # Generated split files
 │   ├── train_split.csv
@@ -234,7 +232,6 @@ multimodal_<multimodal_model>/
 
 loss_comparison.png               # Loss curves overlay
 loss_per_model.png                # Per-model loss curves
-comparison_report.html            # HTML summary table
 summary.md                        # Markdown comparison summary
 ```
 

@@ -7,7 +7,7 @@ import subprocess
 import logging
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from src.config import Config
+from src.results_discovery import default_results_dir, discover_result_dirs
 
 # Setup logging
 logging.basicConfig(
@@ -66,8 +66,7 @@ def main():
         #    "04 - Train Multimodal Model",
         #    os.path.join(script_dir, "04_train_multimodal.py"),
         # ),
-        ("05 - Compare Results", os.path.join(script_dir, "05_compare_results.py")),
-        ("06 - Summarize Results", os.path.join(script_dir, "06_summarize_results.py")),
+        ("05 - Summarize Results", os.path.join(script_dir, "05_summarize_results.py")),
     ]
 
     # Execute pipeline
@@ -85,11 +84,10 @@ def main():
     logger.info("✓ PIPELINE COMPLETE")
     logger.info("=" * 70)
     logger.info("")
-    logger.info(f"Results saved to: {Config.paths.results_dir}")
-    logger.info(f"  - {Config.paths.image_results_name}/")
-    logger.info(f"  - {Config.paths.visual_results_name}/")
-    logger.info(f"  - {Config.paths.multimodal_results_name}/")
-    logger.info("  - comparison_report.html")
+    results_dir = default_results_dir()
+    logger.info(f"Results saved to: {results_dir}")
+    for setup_name in discover_result_dirs(results_dir):
+        logger.info(f"  - {setup_name}/")
     logger.info("  - summary.md")
     logger.info("  - loss_comparison.png")
     logger.info("  - loss_per_model.png")
