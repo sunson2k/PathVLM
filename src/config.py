@@ -5,7 +5,8 @@ from dataclasses import dataclass
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "scripts", "run_config.json")
+RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "configs", "run_config.json")
+os.environ.setdefault("TORCH_HOME", os.path.join(PROJECT_ROOT, ".cache", "torch"))
 
 
 def _load_run_config() -> dict:
@@ -22,11 +23,21 @@ _TRAINING_CONFIG = _RUN_CONFIG.get("training", {})
 _MODEL_CONFIG = _RUN_CONFIG.get("model", {})
 
 
+def _resolve_from_project_root(path_value: str) -> str:
+    """Resolve relative config paths against the repository root."""
+    if not path_value:
+        return path_value
+    if os.path.isabs(path_value):
+        return os.path.abspath(path_value)
+    return os.path.abspath(os.path.join(PROJECT_ROOT, path_value))
+
+
 @dataclass
 class DataConfig:
     """Data configuration."""
-    data_root: str = _RUN_CONFIG.get("data_root", "")
+    data_root: str = _resolve_from_project_root(_RUN_CONFIG.get("data_root", ""))
     tissue: str = _RUN_CONFIG.get("tissue", "Breast")
+    expr_target: str = _RUN_CONFIG.get("expr_target", "8n").lower()
     
     # Data folders
     patch_dir: str = "ST-patches"
@@ -38,14 +49,25 @@ class DataConfig:
     # Dimensions
     num_genes: int = 250
     visual_feature_dim: int = 1024
-    text_feature_dim: int = 1024
-    multimodal_feature_dim: int = 2048  # 1024 + 1024
+    text_feature_dim: int = 512
+    multimodal_feature_dim: int = 1536  # 1024 + 512
     
     # Split ratios
     train_ratio: float = 0.7
     val_ratio: float = 0.15
     test_ratio: float = 0.15
     random_seed: int = 42
+
+    @property
+    def expr_dir(self) -> str:
+        if self.expr_target == "8n":
+            return self.expr_8n_dir
+        if self.expr_target == "spcs":
+            return self.expr_spcs_dir
+        raise ValueError(
+            f"Unsupported expr_target '{self.expr_target}'. "
+            "Use '8n' or 'spcs' in configs/run_config.json."
+        )
 
 
 @dataclass
@@ -56,7 +78,7 @@ class TrainingConfig:
     learning_rate: float = _TRAINING_CONFIG.get("learning_rate", 3e-4)
     weight_decay: float = _TRAINING_CONFIG.get("weight_decay", 1e-4)
     max_epochs: int = _TRAINING_CONFIG.get("max_epochs", 100)
-    early_stop_patience: int = _TRAINING_CONFIG.get("early_stop_patience", 2)
+    early_stop_patience: int = _TRAINING_CONFIG.get("early_stop_patience", 6)
     device: str = _TRAINING_CONFIG.get("device", "cuda")
     
     # Loss
@@ -69,13 +91,18 @@ class ModelConfig:
     # ResNet
     resnet_backbone: str = _MODEL_CONFIG.get("resnet_backbone", "resnet50")
     resnet_pretrained: bool = _MODEL_CONFIG.get("resnet_pretrained", True)
-    resnet_freeze_backbone: bool = _MODEL_CONFIG.get("resnet_freeze_backbone", True)
+    resnet_freeze_mode: str = _MODEL_CONFIG.get("resnet_freeze_mode", "early")
     
     # DNN
     dnn_hidden_sizes: list = None
     dnn_dropout: float = _MODEL_CONFIG.get("dnn_dropout", 0.4)
+    dnn_normalization: str = _MODEL_CONFIG.get("dnn_normalization", "batchnorm")
+    multimodal_model: str = _MODEL_CONFIG.get("multimodal_model", "cross_attention")
     
     def __post_init__(self):
+        self.resnet_freeze_mode = self.resnet_freeze_mode.lower()
+        self.dnn_normalization = self.dnn_normalization.lower()
+        self.multimodal_model = self.multimodal_model.lower()
         if self.dnn_hidden_sizes is None:
             self.dnn_hidden_sizes = _MODEL_CONFIG.get("dnn_hidden_sizes", [1024, 512])
 
@@ -83,7 +110,7 @@ class ModelConfig:
 @dataclass
 class PathConfig:
     """Path configuration."""
-    project_root: str = _RUN_CONFIG.get("project_root", PROJECT_ROOT)
+    project_root: str = _resolve_from_project_root(_RUN_CONFIG.get("project_root", PROJECT_ROOT))
     
     @property
     def src_dir(self) -> str:
@@ -100,6 +127,38 @@ class PathConfig:
     @property
     def results_dir(self) -> str:
         return os.path.join(self.project_root, "results")
+
+    @property
+    def image_results_name(self) -> str:
+        return f"image_{Config.model.resnet_freeze_mode}"
+
+    @property
+    def visual_results_name(self) -> str:
+        return "visual_mode"
+
+    @property
+    def multimodal_results_name(self) -> str:
+        return f"multimodal_{Config.model.multimodal_model}"
+
+    @property
+    def image_results_dir(self) -> str:
+        return os.path.join(self.results_dir, self.image_results_name)
+
+    @property
+    def visual_results_dir(self) -> str:
+        return os.path.join(self.results_dir, self.visual_results_name)
+
+    @property
+    def multimodal_results_dir(self) -> str:
+        return os.path.join(self.results_dir, self.multimodal_results_name)
+
+    @property
+    def model_results_dirs(self) -> dict:
+        return {
+            "image": self.image_results_dir,
+            "visual": self.visual_results_dir,
+            "multimodal": self.multimodal_results_dir,
+        }
     
     @property
     def notebooks_dir(self) -> str:

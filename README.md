@@ -4,8 +4,15 @@ A production-ready PyTorch repository for predicting gene expression from spatia
 
 ## Quick Start
 
-### 1. Data Preparation
-Edit `scripts/run_config.json` for your local data and output roots:
+### 1. Environment Setup
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .
+```
+
+### 2. Data Preparation
+Edit `configs/run_config.json` for your local data and output roots:
 
 ```json
 {
@@ -25,9 +32,11 @@ Edit `scripts/run_config.json` for your local data and output roots:
   "model": {
     "resnet_backbone": "resnet50",
     "resnet_pretrained": true,
-    "resnet_freeze_backbone": true,
+    "resnet_freeze_mode": "early",
     "dnn_hidden_sizes": [1024, 512],
-    "dnn_dropout": 0.4
+    "dnn_dropout": 0.4,
+    "dnn_normalization": "batchnorm",
+    "multimodal_model": "cross_attention"
   }
 }
 ```
@@ -37,14 +46,15 @@ python scripts/01_prepare_data.py
 ```
 This creates train/val/test splits (70/15/15) with verified alignment across all data modalities.
 
-### 2. Train All Models
+### 3. Run the End-to-End Pipeline
 ```bash
 python scripts/run_pipeline.py
 ```
-Trains three independent models:
-- **Image Mode**: ResNet50 backbone → 250-gene output
-- **Visual Mode**: 1024-dim embeddings → DNN → 250-gene output
-- **Multimodal Mode**: 1536-dim (visual+text) embeddings → DNN → 250-gene output
+Prepares data, trains three independent models, evaluates each model, and generates the final Markdown summary:
+- **Image Mode**: ResNet50 backbone → shared DNN head → 250-gene output
+- **Visual Mode**: 1024-dim embeddings → shared DNN → 250-gene output
+- **Multimodal Mode**: 1536-dim (visual+text) embeddings → configured multimodal model → 250-gene output
+- **Reports**: `results/summary.md`, `results/loss_comparison.png`, `results/loss_per_model.png`
 
 Or train individually:
 ```bash
@@ -53,9 +63,9 @@ python scripts/03_train_visual.py
 python scripts/04_train_multimodal.py
 ```
 
-### 3. Generate Evaluation Report
+### 4. Regenerate Reports Only
 ```bash
-python scripts/05_evaluate_all.py
+python scripts/05_summarize_results.py
 ```
 
 ## Data Structure
@@ -67,7 +77,7 @@ python scripts/05_evaluate_all.py
 │       └── {spot_id}.png
 ├── ST-features-UNI/                   # Visual embeddings (1024-dim)
 │   └── {tissue_id}_features.csv
-├── ST-features-CONCH-text/            # Text embeddings (1024-dim)
+├── ST-features-CONCH-text/            # Text embeddings (512-dim)
 │   └── {tissue_id}_text_features.csv
 ├── ST-expression-top-8n/              # Expression targets (250 genes)
 │   └── {tissue_id}_expression.csv
@@ -80,9 +90,12 @@ python scripts/05_evaluate_all.py
 ```
 {project_root}/
 ├── code_plan.md                       # Detailed implementation plan
+├── configs/
+│   ├── run_config.json                # Local runtime settings
+│   └── run_config_template.json       # Example runtime settings
 ├── src/
 │   ├── __init__.py
-│   ├── config.py                      # Loads runtime settings from scripts/run_config.json
+│   ├── config.py                      # Loads runtime settings from configs/run_config.json
 │   ├── data_preparation.py            # Data splitting & alignment verification
 │   ├── data_loaders.py                # PyTorch Dataset implementations
 │   ├── models.py                      # Three model architectures
@@ -94,14 +107,14 @@ python scripts/05_evaluate_all.py
 │   ├── 02_train_image.py              # Train image model
 │   ├── 03_train_visual.py             # Train visual model
 │   ├── 04_train_multimodal.py         # Train multimodal model
-│   ├── 05_evaluate_all.py             # Generate comparisons
+│   ├── 05_summarize_results.py        # Generate markdown summary and loss plots
 │   └── run_pipeline.py                # Master orchestrator
 ├── data_splits/                       # Generated split files
 │   ├── train_split.csv
 │   ├── val_split.csv
 │   └── test_split.csv
 ├── results/                           # Model outputs
-│   ├── image_mode/
+│   ├── image_<resnet_freeze_mode>/
 │   │   ├── checkpoints/
 │   │   │   ├── best_model.pt
 │   │   │   └── history.json
@@ -109,29 +122,45 @@ python scripts/05_evaluate_all.py
 │   │       ├── summary.json
 │   │       └── {train|val|test}_*.csv
 │   ├── visual_mode/
-│   └── multimodal_mode/
+│   └── multimodal_<multimodal_model>/
 └── notebooks/                         # For EDA & visualization
 ```
 
 ## Model Specifications
 
 ### ResNetRegressor (Image Mode)
-- **Backbone**: ResNet50 (ImageNet pretrained, layers 3-4 trainable)
+- **Backbone**: ResNet50 (ImageNet pretrained by default)
+- **Freeze Mode**: `none`, `early`, or `all`; `early` freezes all backbone layers except `layer3` and `layer4`
 - **Input**: RGB images (3, 224, 224)
-- **Architecture**: 2048 → 1024 → 512 → 250
+- **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
+- **Architecture**: 2048 → 1024 → 512 → 250 by default
 - **Output**: 250 gene expression values
 
 ### VisualDNN (Visual Embedding Mode)
 - **Input**: 1024-dim visual embeddings (UNI model)
 - **Architecture**: 1024 → 1024 → 512 → 250
 - **Dropout**: 0.4 between layers
-- **Normalization**: StandardScaler fitted on training data only
+- **Normalization**: BatchNorm inside the DNN by default; StandardScaler fitted on training data only for input features
 
-### MultimodalDNN (Multimodal Mode)
-- **Input**: 1536-dim concatenated (1024 visual + 1024 text)
+### Multimodal Models (Multimodal Mode)
+- **Config**: `model.multimodal_model`
+- **Options**: `concat`, `cross_attention`, or `gmu`
+
+### MultimodalDNN
+- **Input**: 1536-dim concatenated (1024 visual + 512 text)
 - **Architecture**: 1536 → 1024 → 512 → 250
 - **Dropout**: 0.4 between layers
-- **Normalization**: StandardScaler fitted on training data only
+- **Normalization**: BatchNorm inside the DNN by default; StandardScaler fitted on training data only for input features
+
+### MultimodalCrossAttentionDNN
+- **Input**: 1536-dim concatenated (1024 visual + 512 text), split internally into visual and text embeddings
+- **Fusion**: Text embedding modulates visual embedding through cross-attention
+- **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
+
+### MultimodalGMUDNN
+- **Input**: 1536-dim concatenated (1024 visual + 512 text), split internally into visual and text embeddings
+- **Fusion**: Projects each modality into a shared hidden space, learns a sigmoid gate from the original concatenated input, and blends the projected visual/text states elementwise
+- **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`
 
 ## Training Configuration
 
@@ -145,7 +174,7 @@ optimizer = Adam
 loss_function = scaled_mse_loss  # Per-dimension normalization
 ```
 
-These values are configured in `scripts/run_config.json`.
+These values are configured in `configs/run_config.json`.
 
 ## Key Features
 
@@ -155,6 +184,7 @@ These values are configured in `scripts/run_config.json`.
 - Gene column consistency validation
 
 ✅ **Proper Normalization**
+- BatchNorm inside all shared DNN hidden layers by default
 - StandardScaler fitted ONLY on training data (prevents leakage)
 - Separate scalers per feature mode
 - Scaled MSE loss for per-dimension normalization
@@ -183,7 +213,7 @@ Each model generates:
 After training completes, results are saved to `{project_root}/results/`:
 
 ```
-image_mode/
+image_<resnet_freeze_mode>/
 ├── checkpoints/
 │   ├── best_model.pt              # Best model weights
 │   ├── history.json               # Loss trajectory
@@ -197,8 +227,12 @@ image_mode/
     ├── val_predictions.csv
     └── test_predictions.csv
 
+visual_mode/
+multimodal_<multimodal_model>/
+
 loss_comparison.png               # Loss curves overlay
-comparison_report.html            # HTML summary table
+loss_per_model.png                # Per-model loss curves
+summary.md                        # Markdown comparison summary
 ```
 
 ## Requirements
@@ -215,9 +249,9 @@ comparison_report.html            # HTML summary table
 
 ## Troubleshooting
 
-**FileNotFoundError**: Check that data is accessible at `{data_root}/{tissue}/` from `scripts/run_config.json`
+**FileNotFoundError**: Check that data is accessible at `{data_root}/{tissue}/` from `configs/run_config.json`
 
-**CUDA Out of Memory**: Reduce `training.batch_size` in `scripts/run_config.json`
+**CUDA Out of Memory**: Reduce `training.batch_size` in `configs/run_config.json`
 
 **Misaligned Data**: Run `01_prepare_data.py` with debug logging to identify problematic samples
 
@@ -227,7 +261,7 @@ comparison_report.html            # HTML summary table
 - Dynamic data loading: Features loaded from disk at sample time
 - Memory efficient: Expression CSVs loaded once per dataset creation
 - Modular architecture: Each component independently testable
-- Configuration centralized: Runtime paths and training hyperparameters in `scripts/run_config.json`
+- Configuration centralized: Runtime paths and training hyperparameters in `configs/run_config.json`
 
 ## Performance Expectations
 

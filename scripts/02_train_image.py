@@ -3,16 +3,15 @@
 
 import sys
 import os
-import torch
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add project root to path so src can be imported as a package
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from config import Config
-from data_loaders import create_dataloaders
-from models import ResNetRegressor
-from training import Trainer
-from evaluation import evaluate_all_splits
+from src.config import Config
+from src.data_loaders import create_dataloaders
+from src.models import ResNetRegressor
+from src.training import Trainer, resolve_device
+from src.evaluation import evaluate_all_splits
 import logging
 
 # Setup logging
@@ -28,10 +27,7 @@ def main():
     """Train image-based ResNet model."""
     
     # Setup
-    device = Config.training.device
-    if device == "cuda" and not torch.cuda.is_available():
-        device = "cpu"
-    logger.info(f"Using device: {device}")
+    device = resolve_device(Config.training.device)
     
     # Create dataloaders
     logger.info("Creating dataloaders for image mode...")
@@ -41,15 +37,15 @@ def main():
         feature_mode='image',
         batch_size=Config.training.batch_size,
         num_workers=Config.training.num_workers,
-        expr_csv_dir=Config.data.expr_8n_dir,
+        expr_csv_dir=Config.data.expr_dir,
         data_root=Config.data.data_root
     )
     
     # Get gene names for evaluation
     import pandas as pd
+    expr_root = os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_dir)
     expr_df = pd.read_csv(
-        os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_8n_dir,
-                     os.listdir(os.path.join(Config.data.data_root, Config.data.tissue, Config.data.expr_8n_dir))[0]),
+        os.path.join(expr_root, os.listdir(expr_root)[0]),
         index_col=0
     )
     gene_names = expr_df.columns.str.strip().tolist()
@@ -60,11 +56,14 @@ def main():
         num_genes=len(gene_names),
         backbone=Config.model.resnet_backbone,
         pretrained=Config.model.resnet_pretrained,
-        freeze_backbone=Config.model.resnet_freeze_backbone
+        freeze_mode=Config.model.resnet_freeze_mode,
+        hidden_dims=Config.model.dnn_hidden_sizes,
+        dropout=Config.model.dnn_dropout,
+        normalization=Config.model.dnn_normalization
     )
     
     # Create trainer
-    checkpoint_dir = os.path.join(Config.paths.results_dir, 'image_mode', 'checkpoints')
+    checkpoint_dir = os.path.join(Config.paths.image_results_dir, 'checkpoints')
     trainer = Trainer(
         model=model,
         train_loader=train_loader,
@@ -73,6 +72,7 @@ def main():
         device=device,
         learning_rate=Config.training.learning_rate,
         weight_decay=Config.training.weight_decay,
+        loss_eps=Config.training.loss_eps,
         checkpoint_dir=checkpoint_dir,
         mode_name='image'
     )
@@ -89,7 +89,7 @@ def main():
     
     # Evaluate
     logger.info("Evaluating on all splits...")
-    eval_dir = os.path.join(Config.paths.results_dir, 'image_mode', 'evaluation')
+    eval_dir = os.path.join(Config.paths.image_results_dir, 'evaluation')
     results = evaluate_all_splits(
         model=trainer.model,
         train_loader=train_loader,
@@ -97,6 +97,7 @@ def main():
         test_loader=test_loader,
         gene_names=gene_names,
         device=device,
+        loss_eps=Config.training.loss_eps,
         output_dir=eval_dir,
         mode_name='image'
     )

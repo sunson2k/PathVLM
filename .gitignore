@@ -2,3 +2,11 @@
 results/
 data_splits/
 data/
+.cache/
+
+.venv/
+__pycache__/
+*.egg-info
+uv.lock
+
+outputs/

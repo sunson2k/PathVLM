@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from typing import Tuple, Optional
 import logging
 
-from config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,11 @@ class GeneExpressionDataset(Dataset):
         
         # Load target expression
         expr_df = self.expr_data[tissue_id]
-        target = torch.FloatTensor(expr_df.loc[spot_id, self.gene_columns].values)
+        target_values = expr_df.loc[spot_id, self.gene_columns].to_numpy(
+            dtype=np.float32,
+            copy=True,
+        )
+        target = torch.from_numpy(target_values)
         
         return features, target, uid
     
@@ -166,17 +170,17 @@ class VisualEmbeddingDataset(GeneExpressionDataset):
     def _load_features(self, tissue_id: str, spot_id: str) -> torch.Tensor:
         """Load visual embedding and optionally apply scaler."""
         feat_df = self.visual_features[tissue_id]
-        features = feat_df.loc[spot_id].values.astype(np.float32)
+        features = feat_df.loc[spot_id].to_numpy(dtype=np.float32, copy=True)
         
         # Apply scaler if available
         if self.scaler is not None:
-            features = self.scaler.transform([features])[0]
+            features = self.scaler.transform([features])[0].astype(np.float32, copy=True)
         
-        return torch.FloatTensor(features)
+        return torch.from_numpy(features)
 
 
 class MultimodalDataset(GeneExpressionDataset):
-    """Dataset for multimodal embeddings (visual + text concatenated)."""
+    """Dataset for multimodal embeddings (1024 visual + 512 text concatenated)."""
     
     def __init__(self,
                  split_df: pd.DataFrame,
@@ -217,17 +221,70 @@ class MultimodalDataset(GeneExpressionDataset):
     
     def _load_features(self, tissue_id: str, spot_id: str) -> torch.Tensor:
         """Load and concatenate visual + text embeddings."""
-        visual = self.visual_features[tissue_id].loc[spot_id].values.astype(np.float32)
-        text = self.text_features[tissue_id].loc[spot_id].values.astype(np.float32)
+        visual = self.visual_features[tissue_id].loc[spot_id].to_numpy(dtype=np.float32, copy=True)
+        text = self.text_features[tissue_id].loc[spot_id].to_numpy(dtype=np.float32, copy=True)
         
         # Concatenate to 1536 dimensions
         combined = np.concatenate([visual, text], axis=0)
         
         # Apply scaler if available
         if self.scaler is not None:
-            combined = self.scaler.transform([combined])[0]
+            combined = self.scaler.transform([combined])[0].astype(np.float32, copy=True)
         
-        return torch.FloatTensor(combined)
+        return torch.from_numpy(combined)
+
+
+def _fit_visual_scaler(train_df: pd.DataFrame, data_root: str) -> StandardScaler:
+    """Fit scaler on all training visual embeddings with one CSV read per tissue."""
+    train_features = []
+    visual_root = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir)
+
+    for tissue_id, tissue_df in train_df.groupby('tissue_id', sort=False):
+        feat_path = os.path.join(visual_root, f"{tissue_id}_features.csv")
+        feat_df = pd.read_csv(feat_path, index_col='spot_id')
+        spot_ids = tissue_df['spot_id'].tolist()
+        train_features.append(
+            feat_df.loc[spot_ids].to_numpy(dtype=np.float32, copy=True)
+        )
+
+    train_features = np.vstack(train_features)
+    scaler = StandardScaler()
+    scaler.fit(train_features)
+    logger.info(
+        f"Fitted StandardScaler on {train_features.shape[0]} training samples "
+        f"(visual, {len(train_df['tissue_id'].unique())} tissue CSVs)"
+    )
+    return scaler
+
+
+def _fit_multimodal_scaler(train_df: pd.DataFrame, data_root: str) -> StandardScaler:
+    """Fit scaler on all training multimodal embeddings with one CSV read per tissue."""
+    train_features = []
+    visual_root = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir)
+    text_root = os.path.join(data_root, Config.data.tissue, Config.data.text_feat_dir)
+
+    for tissue_id, tissue_df in train_df.groupby('tissue_id', sort=False):
+        spot_ids = tissue_df['spot_id'].tolist()
+
+        visual_path = os.path.join(visual_root, f"{tissue_id}_features.csv")
+        visual_df = pd.read_csv(visual_path, index_col='spot_id')
+        visual = visual_df.loc[spot_ids].to_numpy(dtype=np.float32, copy=True)
+
+        text_path = os.path.join(text_root, f"{tissue_id}_text_features.csv")
+        text_df = pd.read_csv(text_path, index_col='spot_id')
+        text = text_df.loc[spot_ids].to_numpy(dtype=np.float32, copy=True)
+
+        train_features.append(np.concatenate([visual, text], axis=1))
+
+    train_features = np.vstack(train_features)
+    scaler = StandardScaler()
+    scaler.fit(train_features)
+    logger.info(
+        f"Fitted StandardScaler on {train_features.shape[0]} training samples "
+        f"(multimodal, {len(train_df['tissue_id'].unique())} tissues, "
+        f"{2 * len(train_df['tissue_id'].unique())} feature CSVs)"
+    )
+    return scaler
 
 
 def create_dataloaders(split_dir: str,
@@ -269,46 +326,12 @@ def create_dataloaders(split_dir: str,
     # Initialize scaler if not image mode
     scaler = None
     if feature_mode in ['visual_embedding', 'multimodal']:
-        scaler = StandardScaler()
-        
         # Fit scaler on training data only
         if feature_mode == 'visual_embedding':
-            train_features = []
-            for _, row in train_df.iterrows():
-                tissue_id = row['tissue_id']
-                spot_id = row['spot_id']
-                feat_path = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir, 
-                                        f"{tissue_id}_features.csv")
-                feat_df = pd.read_csv(feat_path, index_col='spot_id')
-                train_features.append(feat_df.loc[spot_id].values)
-            
-            scaler.fit(np.array(train_features))
-            logger.info(f"Fitted StandardScaler on {len(train_features)} training samples (visual)")
+            scaler = _fit_visual_scaler(train_df, data_root)
         
         elif feature_mode == 'multimodal':
-            train_features = []
-            for _, row in train_df.iterrows():
-                tissue_id = row['tissue_id']
-                spot_id = row['spot_id']
-                
-                # Load visual
-                visual_path = os.path.join(data_root, Config.data.tissue, Config.data.visual_feat_dir, 
-                                          f"{tissue_id}_features.csv")
-                visual_df = pd.read_csv(visual_path, index_col='spot_id')
-                visual = visual_df.loc[spot_id].values
-                
-                # Load text
-                text_path = os.path.join(data_root, Config.data.tissue, Config.data.text_feat_dir, 
-                                        f"{tissue_id}_text_features.csv")
-                text_df = pd.read_csv(text_path, index_col='spot_id')
-                text = text_df.loc[spot_id].values
-                
-                # Concatenate
-                combined = np.concatenate([visual, text], axis=0)
-                train_features.append(combined)
-            
-            scaler.fit(np.array(train_features))
-            logger.info(f"Fitted StandardScaler on {len(train_features)} training samples (multimodal)")
+            scaler = _fit_multimodal_scaler(train_df, data_root)
     
     # Create datasets
     dataset_class = {

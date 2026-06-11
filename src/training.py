@@ -9,9 +9,35 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import logging
 
-from models import scaled_mse_loss
+from .models import scaled_mse_loss
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_device(requested_device: str) -> str:
+    """Resolve and validate the configured training device."""
+    requested_device = (requested_device or "cuda").lower()
+
+    if requested_device == "auto":
+        requested_device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    if requested_device.startswith("cuda"):
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "CUDA was requested for training, but this PyTorch install cannot "
+                "access CUDA. Install a CUDA-enabled torch/torchvision pair or set "
+                "training.device to 'cpu' in configs/run_config.json."
+            )
+
+        device = requested_device if ":" in requested_device else "cuda:0"
+        device_index = torch.device(device).index or 0
+        gpu_name = torch.cuda.get_device_name(device_index)
+        total_gb = torch.cuda.get_device_properties(device_index).total_memory / (1024 ** 3)
+        logger.info(f"Using device: {device} ({gpu_name}, {total_gb:.1f} GB)")
+        return device
+
+    logger.info(f"Using device: {requested_device}")
+    return requested_device
 
 
 class EarlyStopper:
@@ -59,6 +85,7 @@ class Trainer:
                  device: str = "cuda",
                  learning_rate: float = 3e-4,
                  weight_decay: float = 1e-4,
+                 loss_eps: float = 1e-6,
                  checkpoint_dir: str = None,
                  mode_name: str = "model"):
         """
@@ -70,6 +97,7 @@ class Trainer:
             device: Device to train on ('cuda' or 'cpu')
             learning_rate: Initial learning rate
             weight_decay: L2 regularization
+            loss_eps: Small epsilon for scaled MSE normalization
             checkpoint_dir: Directory to save checkpoints
             mode_name: Name of mode for logging (e.g., 'image', 'visual', 'multimodal')
         """
@@ -79,6 +107,7 @@ class Trainer:
         self.test_loader = test_loader
         self.device = device
         self.mode_name = mode_name
+        self.loss_eps = loss_eps
         
         self.optimizer = Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -112,7 +141,7 @@ class Trainer:
             # Forward pass
             self.optimizer.zero_grad()
             predictions = self.model(features)
-            loss = scaled_mse_loss(predictions, targets)
+            loss = scaled_mse_loss(predictions, targets, eps=self.loss_eps)
             
             # Backward pass
             loss.backward()
@@ -138,7 +167,7 @@ class Trainer:
             targets = targets.to(self.device)
             
             predictions = self.model(features)
-            loss = scaled_mse_loss(predictions, targets)
+            loss = scaled_mse_loss(predictions, targets, eps=self.loss_eps)
             total_loss += loss.item() * features.size(0)
         
         avg_loss = total_loss / len(dataloader.dataset)
@@ -158,15 +187,16 @@ class Trainer:
         
         logger.debug(f"Saved checkpoint: {path}")
     
-    def load_checkpoint(self, path: str):
+    def load_checkpoint(self, path: str, restore_history: bool = True):
         """Load model checkpoint."""
         checkpoint = torch.load(path, map_location=self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.history = checkpoint['history']
+        if restore_history:
+            self.history = checkpoint['history']
         logger.info(f"Loaded checkpoint: {path}")
     
-    def train(self, max_epochs: int = 100, early_stop_patience: int = 2) -> Dict:
+    def train(self, max_epochs: int = 100, early_stop_patience: int = 6) -> Dict:
         """
         Train the model.
         
@@ -183,7 +213,7 @@ class Trainer:
         
         early_stopper = EarlyStopper(patience=early_stop_patience)
         
-        for epoch in range(max_epochs):
+        for epoch in range(1, max_epochs + 1):
             # Train and evaluate
             train_loss = self.train_epoch()
             val_loss = self.evaluate(self.val_loader)
@@ -197,12 +227,11 @@ class Trainer:
             self.history['val_loss'].append(val_loss)
             self.history['test_loss'].append(test_loss)
             
-            # Log progress
-            if (epoch + 1) % max(1, max_epochs // 20) == 0 or epoch == 0:
-                logger.info(f"Epoch {epoch + 1:3d}/{max_epochs} | "
-                          f"Train: {train_loss:.6f} | "
-                          f"Val: {val_loss:.6f} | "
-                          f"Test: {test_loss:.6f}")
+            # Log every epoch so terminal and log output match the saved history.
+            logger.info(f"Epoch {epoch:3d}/{max_epochs} | "
+                      f"Train: {train_loss:.6f} | "
+                      f"Val: {val_loss:.6f} | "
+                      f"Test: {test_loss:.6f}")
             
             # Check for best model and save
             if val_loss < self.history['best_val_loss']:
@@ -218,7 +247,7 @@ class Trainer:
         # Load best model
         best_path = os.path.join(self.checkpoint_dir, 'best_model.pt')
         if os.path.exists(best_path):
-            self.load_checkpoint(best_path)
+            self.load_checkpoint(best_path, restore_history=False)
         
         logger.info("=" * 60)
         logger.info(f"Training complete ({self.mode_name})")

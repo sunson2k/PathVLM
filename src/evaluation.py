@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Dict, List, Tuple
 
-from models import scaled_mse_loss
+from .models import scaled_mse_loss
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,16 @@ logger = logging.getLogger(__name__)
 class Evaluator:
     """Compute and track evaluation metrics."""
     
-    def __init__(self, model, device: str = "cuda"):
+    def __init__(self, model, device: str = "cuda", loss_eps: float = 1e-6):
         """
         Args:
             model: PyTorch model
             device: Device to evaluate on
+            loss_eps: Small epsilon for scaled MSE normalization
         """
         self.model = model.to(device)
         self.device = device
+        self.loss_eps = loss_eps
     
     @torch.no_grad()
     def compute_metrics(self, 
@@ -59,7 +61,7 @@ class Evaluator:
             targets = targets.to(self.device)
             
             predictions = self.model(features)
-            loss = scaled_mse_loss(predictions, targets)
+            loss = scaled_mse_loss(predictions, targets, eps=self.loss_eps)
             total_loss += loss.item() * features.size(0)
             
             all_predictions.append(predictions.cpu())
@@ -149,6 +151,7 @@ def evaluate_all_splits(model,
                        test_loader: DataLoader,
                        gene_names: List[str],
                        device: str = "cuda",
+                       loss_eps: float = 1e-6,
                        output_dir: str = None,
                        mode_name: str = "model") -> Dict[str, Dict]:
     """
@@ -161,13 +164,14 @@ def evaluate_all_splits(model,
         test_loader: Test DataLoader
         gene_names: List of gene names
         device: Device to evaluate on
+        loss_eps: Small epsilon for scaled MSE normalization
         output_dir: Directory to save results
         mode_name: Name of mode (for logging/saving)
     
     Returns:
         Dictionary with metrics for each split
     """
-    evaluator = Evaluator(model, device)
+    evaluator = Evaluator(model, device, loss_eps=loss_eps)
     
     os.makedirs(output_dir, exist_ok=True)
     
