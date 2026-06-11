@@ -16,16 +16,22 @@ Edit `configs/run_config.json` for your local data and output roots:
 
 ```json
 {
-  "data_root": "/path/to/data",
-  "project_root": "/path/to/PathVLM",
+  "_choices": {
+    "model.resnet_freeze_mode": ["none", "early", "all"],
+    "model.dnn_normalization": ["batchnorm", "layernorm", "none"],
+    "model.multimodal_model": ["concat", "cross_attention", "gmu"]
+  },  
+  "data_root": "data",
+  "project_root": ".",
   "tissue": "Breast",
+  "expr_target": "8n",
   "training": {
     "batch_size": 64,
     "num_workers": 4,
     "learning_rate": 0.0003,
     "weight_decay": 0.0001,
     "max_epochs": 100,
-    "early_stop_patience": 2,
+    "early_stop_patience": 6,
     "device": "cuda",
     "loss_eps": 0.000001
   },
@@ -33,9 +39,12 @@ Edit `configs/run_config.json` for your local data and output roots:
     "resnet_backbone": "resnet50",
     "resnet_pretrained": true,
     "resnet_freeze_mode": "early",
-    "dnn_hidden_sizes": [1024, 512],
+    "dnn_hidden_sizes": [
+      1024,
+      512
+    ],
     "dnn_dropout": 0.4,
-    "dnn_normalization": "batchnorm",
+    "dnn_normalization": "none",
     "multimodal_model": "cross_attention"
   }
 }
@@ -169,7 +178,7 @@ batch_size = 64
 learning_rate = 3e-4
 weight_decay = 1e-4
 max_epochs = 100
-early_stop_patience = 2
+early_stop_patience = 6
 optimizer = Adam
 loss_function = scaled_mse_loss  # Per-dimension normalization
 ```
@@ -190,7 +199,7 @@ These values are configured in `configs/run_config.json`.
 - Scaled MSE loss for per-dimension normalization
 
 ✅ **Robust Training**
-- Early stopping with patience=2 on validation loss
+- Early stopping with patience=6 on validation loss
 - Learning rate scheduling (ReduceLROnPlateau)
 - Best model checkpoint saving by validation performance
 
