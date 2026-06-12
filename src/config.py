@@ -90,6 +90,11 @@ class ModelConfig:
     """Model architecture configuration."""
     # ResNet
     resnet_backbone: str = _MODEL_CONFIG.get("resnet_backbone", "resnet50")
+    resnet_source: str = _MODEL_CONFIG.get("resnet_source", "torchvision")
+    resnet_local_path: str = _MODEL_CONFIG.get(
+        "resnet_local_path",
+        "local_models/microsoft_resnet-50",
+    )
     resnet_pretrained: bool = _MODEL_CONFIG.get("resnet_pretrained", True)
     resnet_freeze_mode: str = _MODEL_CONFIG.get("resnet_freeze_mode", "early")
     
@@ -100,6 +105,8 @@ class ModelConfig:
     multimodal_model: str = _MODEL_CONFIG.get("multimodal_model", "cross_attention")
     
     def __post_init__(self):
+        self.resnet_source = self.resnet_source.lower()
+        self.resnet_local_path = _resolve_from_project_root(self.resnet_local_path)
         self.resnet_freeze_mode = self.resnet_freeze_mode.lower()
         self.dnn_normalization = self.dnn_normalization.lower()
         self.multimodal_model = self.multimodal_model.lower()
@@ -130,7 +137,9 @@ class PathConfig:
 
     @property
     def image_results_name(self) -> str:
-        return f"image_{Config.model.resnet_freeze_mode}"
+        if Config.model.resnet_source == "torchvision":
+            return f"image_{Config.model.resnet_freeze_mode}"
+        return f"image_{Config.model.resnet_source}_{Config.model.resnet_freeze_mode}"
 
     @property
     def visual_results_name(self) -> str:

@@ -55,6 +55,8 @@ def main():
     model = ResNetRegressor(
         num_genes=len(gene_names),
         backbone=Config.model.resnet_backbone,
+        resnet_source=Config.model.resnet_source,
+        local_model_path=Config.model.resnet_local_path,
         pretrained=Config.model.resnet_pretrained,
         freeze_mode=Config.model.resnet_freeze_mode,
         hidden_dims=Config.model.dnn_hidden_sizes,
