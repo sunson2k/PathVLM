@@ -17,6 +17,7 @@ Edit `configs/run_config.json` for your local data and output roots:
 ```json
 {
   "_choices": {
+    "model.resnet_source": ["torchvision", "huggingface_local"],
     "model.resnet_freeze_mode": ["none", "early", "all"],
     "model.dnn_normalization": ["batchnorm", "layernorm", "none"],
     "model.multimodal_model": ["concat", "cross_attention", "gmu"]
@@ -37,6 +38,8 @@ Edit `configs/run_config.json` for your local data and output roots:
   },
   "model": {
     "resnet_backbone": "resnet50",
+    "resnet_source": "torchvision",
+    "resnet_local_path": "local_models/microsoft_resnet-50",
     "resnet_pretrained": true,
     "resnet_freeze_mode": "early",
     "dnn_hidden_sizes": [
@@ -139,6 +142,7 @@ python scripts/05_summarize_results.py
 
 ### ResNetRegressor (Image Mode)
 - **Backbone**: ResNet50 (ImageNet pretrained by default)
+- **Source**: `model.resnet_source="torchvision"` uses torchvision `IMAGENET1K_V2`; `model.resnet_source="huggingface_local"` loads `model.resnet_local_path` with Transformers `from_pretrained`
 - **Freeze Mode**: `none`, `early`, or `all`; `early` freezes all backbone layers except `layer3` and `layer4`
 - **Input**: RGB images (3, 224, 224)
 - **Head**: Shared DNN configured by `model.dnn_hidden_sizes`, `model.dnn_dropout`, and `model.dnn_normalization`

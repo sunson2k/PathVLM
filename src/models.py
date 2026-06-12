@@ -6,6 +6,28 @@ import torchvision.models as models
 from typing import List
 
 
+class HuggingFaceResNetBackbone(nn.Module):
+    """Adapter for local Transformers ResNet checkpoints."""
+
+    def __init__(self, model_path: str):
+        super().__init__()
+        try:
+            from transformers import ResNetForImageClassification
+        except ImportError as exc:
+            raise ImportError(
+                "Using model.resnet_source='huggingface_local' requires "
+                "the 'transformers' package. Install project dependencies "
+                "after updating pyproject.toml, then rerun image training."
+            ) from exc
+
+        hf_model = ResNetForImageClassification.from_pretrained(model_path)
+        self.resnet = hf_model.resnet
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        pooled = self.resnet(pixel_values=x).pooler_output
+        return torch.flatten(pooled, start_dim=1)
+
+
 class ResNetRegressor(nn.Module):
     """ResNet50-based regressor for image-to-expression prediction."""
 
@@ -13,6 +35,8 @@ class ResNetRegressor(nn.Module):
         self,
         num_genes: int = 250,
         backbone: str = "resnet50",
+        resnet_source: str = "torchvision",
+        local_model_path: str = None,
         pretrained: bool = True,
         freeze_mode: str = "early",
         hidden_dims: List[int] = None,
@@ -23,6 +47,8 @@ class ResNetRegressor(nn.Module):
         Args:
             num_genes: Output dimension (number of genes)
             backbone: ResNet backbone name
+            resnet_source: "torchvision" or "huggingface_local"
+            local_model_path: Local Hugging Face model directory
             pretrained: Use ImageNet pretrained weights
             freeze_mode: ResNet training mode. One of "none", "early", or "all".
                 "early" freezes all layers except layer3/layer4. "all" freezes
@@ -35,8 +61,32 @@ class ResNetRegressor(nn.Module):
         if backbone != "resnet50":
             raise ValueError(f"Unsupported ResNet backbone: {backbone}")
 
-        # Load ResNet50 backbone
-        self.backbone = models.resnet50(weights="IMAGENET1K_V2" if pretrained else None)
+        resnet_source = resnet_source.lower()
+        if resnet_source == "torchvision":
+            self.backbone = models.resnet50(weights="IMAGENET1K_V2" if pretrained else None)
+            self._trainable_early_prefixes = ("layer3", "layer4")
+            self.backbone.fc = nn.Identity()
+        elif resnet_source == "huggingface_local":
+            if not pretrained:
+                raise ValueError(
+                    "model.resnet_source='huggingface_local' requires "
+                    "model.resnet_pretrained=true because it loads saved local weights."
+                )
+            if not local_model_path:
+                raise ValueError(
+                    "model.resnet_local_path must be set when using "
+                    "model.resnet_source='huggingface_local'."
+                )
+            self.backbone = HuggingFaceResNetBackbone(local_model_path)
+            self._trainable_early_prefixes = (
+                "resnet.encoder.stages.2",
+                "resnet.encoder.stages.3",
+            )
+        else:
+            raise ValueError(
+                "Unsupported ResNet source "
+                f"'{resnet_source}'. Use 'torchvision' or 'huggingface_local'."
+            )
 
         freeze_mode = freeze_mode.lower()
         if freeze_mode not in {"none", "early", "all"}:
@@ -50,7 +100,7 @@ class ResNetRegressor(nn.Module):
                 param.requires_grad = False
         elif freeze_mode == "early":
             for name, param in self.backbone.named_parameters():
-                if "layer3" not in name and "layer4" not in name:
+                if not name.startswith(self._trainable_early_prefixes):
                     param.requires_grad = False
 
         # Replace classification head with regression head
@@ -67,9 +117,6 @@ class ResNetRegressor(nn.Module):
             dropout=dropout,
             normalization=normalization,
         )
-
-        # Remove original classification layer
-        self.backbone.fc = nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

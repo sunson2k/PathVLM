@@ -114,14 +114,29 @@ class ImageDataset(GeneExpressionDataset):
                         feature_mode="image", scaler=None)
         
         self.img_size = img_size
-        
-        # Standard normalization for ImageNet-pretrained models
-        self.transform = transforms.Compose([
-            transforms.Resize((img_size, img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                               std=[0.229, 0.224, 0.225])
-        ])
+        self.image_processor = None
+
+        if Config.model.resnet_source == "huggingface_local":
+            try:
+                from transformers import AutoImageProcessor
+            except ImportError as exc:
+                raise ImportError(
+                    "Using model.resnet_source='huggingface_local' requires "
+                    "the 'transformers' package for local image preprocessing."
+                ) from exc
+
+            self.transform = None
+            self.image_processor = AutoImageProcessor.from_pretrained(
+                Config.model.resnet_local_path
+            )
+        else:
+            # Standard normalization for ImageNet-pretrained torchvision models.
+            self.transform = transforms.Compose([
+                transforms.Resize((img_size, img_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225])
+            ])
     
     def _load_features(self, tissue_id: str, spot_id: str) -> torch.Tensor:
         """Load and preprocess image."""
@@ -131,7 +146,10 @@ class ImageDataset(GeneExpressionDataset):
             raise FileNotFoundError(f"Image not found: {img_path}")
         
         img = Image.open(img_path).convert('RGB')
-        img_tensor = self.transform(img)
+        if self.image_processor is not None:
+            img_tensor = self.image_processor(img, return_tensors="pt")["pixel_values"].squeeze(0)
+        else:
+            img_tensor = self.transform(img)
         
         return img_tensor
 

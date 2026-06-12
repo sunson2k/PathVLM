@@ -1,5 +1,6 @@
 {
   "_choices": {
+    "model.resnet_source": ["torchvision", "huggingface_local"],
     "model.resnet_freeze_mode": ["none", "early", "all"],
     "model.dnn_normalization": ["batchnorm", "layernorm", "none"],
     "model.multimodal_model": ["concat", "cross_attention", "gmu"]
@@ -20,6 +21,8 @@
   },
   "model": {
     "resnet_backbone": "resnet50",
+    "resnet_source": "torchvision",
+    "resnet_local_path": "local_models/microsoft_resnet-50",
     "resnet_pretrained": true,
     "resnet_freeze_mode": "early",
     "dnn_hidden_sizes": [
