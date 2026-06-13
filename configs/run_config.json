@@ -1,14 +1,39 @@
 {
   "_choices": {
-    "model.resnet_source": ["torchvision", "huggingface_local"],
-    "model.resnet_freeze_mode": ["none", "early", "all"],
-    "model.dnn_normalization": ["batchnorm", "layernorm", "none"],
-    "model.multimodal_model": ["concat", "cross_attention", "gmu"]
-  },  
+    "data.tissue": [
+      "Breast",
+      "Lung"
+    ],
+    "data.expr_target": [
+      "8n",
+      "spcs"
+    ],
+    "data.split_strategy": [
+      "patch",
+      "tissue"
+    ],
+    "model.resnet_source": [
+      "torchvision",
+      "huggingface_local"
+    ],
+    "model.resnet_freeze_mode": [
+      "none",
+      "early",
+      "all"
+    ],
+    "model.dnn_normalization": [
+      "batchnorm",
+      "layernorm",
+      "none"
+    ],
+    "model.multimodal_model": [
+      "concat",
+      "cross_attention",
+      "gmu"
+    ]
+  },
   "data_root": "data",
   "project_root": ".",
-  "tissue": "Breast",
-  "expr_target": "8n",
   "training": {
     "batch_size": 64,
     "num_workers": 4,
@@ -17,7 +42,7 @@
     "max_epochs": 100,
     "early_stop_patience": 6,
     "device": "cuda",
-    "loss_eps": 0.000001
+    "loss_eps": 1e-06
   },
   "model": {
     "resnet_backbone": "resnet50",
@@ -32,5 +57,17 @@
     "dnn_dropout": 0.4,
     "dnn_normalization": "none",
     "multimodal_model": "gmu"
+  },
+  "data": {
+    "tissue": "Breast",
+    "expr_target": "8n",
+    "split_strategy": "tissue",
+    "cv_enabled": true,
+    "num_folds": 6,
+    "cv_val_ratio": 0.1,
+    "force_update_data": false,
+    "train_ratio": 0.75,
+    "val_ratio": 0.1,
+    "test_ratio": 0.15
   }
 }
