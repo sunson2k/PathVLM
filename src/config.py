@@ -1,6 +1,7 @@
 """Global configuration for PathVLM pipeline."""
 import json
 import os
+import shutil
 from dataclasses import dataclass
 
 
@@ -30,6 +31,11 @@ def _resolve_from_project_root(path_value: str) -> str:
     if os.path.isabs(path_value):
         return os.path.abspath(path_value)
     return os.path.abspath(os.path.join(PROJECT_ROOT, path_value))
+
+
+def _safe_path_part(value: str) -> str:
+    """Return a filesystem-safe path segment for experiment folder names."""
+    return "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in value)
 
 
 @dataclass
@@ -118,6 +124,16 @@ class ModelConfig:
 class PathConfig:
     """Path configuration."""
     project_root: str = _resolve_from_project_root(_RUN_CONFIG.get("project_root", PROJECT_ROOT))
+
+    @property
+    def experiment_name(self) -> str:
+        tissue = _safe_path_part(Config.data.tissue)
+        expr_target = _safe_path_part(Config.data.expr_target)
+        return f"exp_{tissue}_{expr_target}"
+
+    @property
+    def experiment_dir(self) -> str:
+        return os.path.join(self.project_root, self.experiment_name)
     
     @property
     def src_dir(self) -> str:
@@ -129,11 +145,11 @@ class PathConfig:
     
     @property
     def data_splits_dir(self) -> str:
-        return os.path.join(self.project_root, "data_splits")
+        return os.path.join(self.experiment_dir, "data_splits")
     
     @property
     def results_dir(self) -> str:
-        return os.path.join(self.project_root, "results")
+        return os.path.join(self.experiment_dir, "results")
 
     @property
     def image_results_name(self) -> str:
@@ -185,9 +201,21 @@ class Config:
 # Create output directories if they don't exist
 def setup_directories():
     """Create necessary output directories."""
+    os.makedirs(Config.paths.experiment_dir, exist_ok=True)
     os.makedirs(Config.paths.data_splits_dir, exist_ok=True)
     os.makedirs(Config.paths.results_dir, exist_ok=True)
     os.makedirs(Config.paths.notebooks_dir, exist_ok=True)
+    snapshot_run_config()
+
+
+def snapshot_run_config():
+    """Copy the active run config into the experiment folder."""
+    if not os.path.exists(RUN_CONFIG_PATH):
+        return
+
+    os.makedirs(Config.paths.experiment_dir, exist_ok=True)
+    snapshot_path = os.path.join(Config.paths.experiment_dir, "run_config.json")
+    shutil.copy2(RUN_CONFIG_PATH, snapshot_path)
 
 
 if __name__ == "__main__":

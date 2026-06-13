@@ -31,6 +31,6 @@
     ],
     "dnn_dropout": 0.4,
     "dnn_normalization": "none",
-    "multimodal_model": "cross_attention"
+    "multimodal_model": "gmu"
   }
 }

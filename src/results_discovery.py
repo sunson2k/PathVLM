@@ -2,14 +2,12 @@
 from pathlib import Path
 from typing import Dict, Iterable
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RESULTS_DIR = PROJECT_ROOT / "results"
+from src.config import Config
 
 
 def default_results_dir() -> Path:
-    """Return the repository-local results directory used by report generation."""
-    return DEFAULT_RESULTS_DIR
+    """Return the active experiment results directory used by report generation."""
+    return Path(Config.paths.results_dir)
 
 
 def discover_result_dirs(results_dir: Path, exclude_names: Iterable[str] = ("old",)) -> Dict[str, str]:

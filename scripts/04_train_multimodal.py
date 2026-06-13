@@ -7,7 +7,7 @@ import os
 # Add project root to path so src can be imported as a package
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.config import Config
+from src.config import Config, setup_directories
 from src.data_loaders import create_dataloaders
 from src.models import MultimodalDNN, MultimodalCrossAttentionDNN, MultimodalGMUDNN
 from src.training import Trainer, resolve_device
@@ -54,6 +54,7 @@ def main():
     """Train multimodal (visual + text) embedding-based DNN model."""
 
     # Setup
+    setup_directories()
     device = resolve_device(Config.training.device)
 
     # Create dataloaders

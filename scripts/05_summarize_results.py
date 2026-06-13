@@ -11,6 +11,7 @@ from pathlib import Path
 # Add project root to path so we can import src modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from src.config import setup_directories
 from src.results_discovery import default_results_dir, discover_history_files, discover_result_dirs
 from src.visualization import plot_loss_curves, plot_per_model_loss_curves
 
@@ -121,6 +122,8 @@ def main():
     parser.add_argument('--y-min', type=float, default=None, help='Optional lower Y-axis bound for generated loss plots')
     parser.add_argument('--y-max', type=float, default=None, help='Optional upper Y-axis bound for generated loss plots')
     args = parser.parse_args()
+
+    setup_directories()
 
     if args.y_min is not None and args.y_max is not None and args.y_min >= args.y_max:
         raise ValueError('--y-min must be less than --y-max')
