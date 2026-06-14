@@ -55,7 +55,7 @@
       512
     ],
     "dnn_dropout": 0.4,
-    "dnn_normalization": "none",
+    "dnn_normalization": "batchnorm",
     "multimodal_model": "gmu"
   },
   "data": {

@@ -147,11 +147,16 @@ class PathConfig:
     def experiment_name(self) -> str:
         tissue = _safe_path_part(Config.data.tissue)
         expr_target = _safe_path_part(Config.data.expr_target)
-        return f"exp_{tissue}_{expr_target}"
+        strategy = _safe_path_part(Config.data.split_strategy)
+        return f"exp_{tissue}_{expr_target}_{strategy}"
+
+    @property
+    def experiment_results_root(self) -> str:
+        return os.path.join(self.project_root, "experiment_results")
 
     @property
     def experiment_dir(self) -> str:
-        return os.path.join(self.project_root, self.experiment_name)
+        return os.path.join(self.experiment_results_root, self.experiment_name)
     
     @property
     def src_dir(self) -> str:
@@ -225,6 +230,7 @@ class Config:
 # Create output directories if they don't exist
 def setup_directories():
     """Create necessary output directories."""
+    os.makedirs(Config.paths.experiment_results_root, exist_ok=True)
     os.makedirs(Config.paths.experiment_dir, exist_ok=True)
     os.makedirs(Config.paths.data_splits_dir, exist_ok=True)
     os.makedirs(Config.paths.results_dir, exist_ok=True)

@@ -12,3 +12,4 @@ uv.lock
 outputs/
 local_models/
 exp_*
+experiment_results/
