@@ -6,7 +6,10 @@ from dataclasses import dataclass
 
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "configs", "run_config.json")
+DEFAULT_RUN_CONFIG_PATH = os.path.join(PROJECT_ROOT, "configs", "run_config.json")
+RUN_CONFIG_PATH = os.path.abspath(
+    os.environ.get("PATHVLM_RUN_CONFIG_PATH", DEFAULT_RUN_CONFIG_PATH)
+)
 os.environ.setdefault("TORCH_HOME", os.path.join(PROJECT_ROOT, ".cache", "torch"))
 
 
@@ -238,14 +241,24 @@ def setup_directories():
     snapshot_run_config()
 
 
-def snapshot_run_config():
-    """Copy the active run config into the experiment folder."""
-    if not os.path.exists(RUN_CONFIG_PATH):
-        return
-
+def snapshot_run_config(snapshot_path: str = None) -> str:
+    """Copy the loaded run config into the experiment folder."""
     os.makedirs(Config.paths.experiment_dir, exist_ok=True)
-    snapshot_path = os.path.join(Config.paths.experiment_dir, "run_config.json")
-    shutil.copy2(RUN_CONFIG_PATH, snapshot_path)
+    if snapshot_path is None:
+        snapshot_path = os.path.join(Config.paths.experiment_dir, "run_config.json")
+    else:
+        snapshot_path = os.path.abspath(snapshot_path)
+        os.makedirs(os.path.dirname(snapshot_path), exist_ok=True)
+
+    if os.path.exists(RUN_CONFIG_PATH):
+        if os.path.abspath(RUN_CONFIG_PATH) != os.path.abspath(snapshot_path):
+            shutil.copy2(RUN_CONFIG_PATH, snapshot_path)
+        return snapshot_path
+
+    with open(snapshot_path, "w", encoding="utf-8") as f:
+        json.dump(_RUN_CONFIG, f, indent=2)
+        f.write("\n")
+    return snapshot_path
 
 
 if __name__ == "__main__":

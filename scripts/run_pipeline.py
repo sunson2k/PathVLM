@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Master orchestrator: run full pipeline end-to-end."""
 
+import argparse
 import logging
 import os
 import shutil
@@ -11,8 +12,6 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from src.config import Config
-from src.results_discovery import default_results_dir, discover_result_dirs
 
 # Setup logging
 logging.basicConfig(
@@ -20,6 +19,28 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def project_root() -> str:
+    """Return the repository root for resolving default CLI paths."""
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+
+def resolve_config_path(config_path: str) -> str:
+    """Resolve config paths from the project root unless absolute."""
+    if os.path.isabs(config_path):
+        return os.path.abspath(config_path)
+    return os.path.abspath(os.path.join(project_root(), config_path))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run the full PathVLM pipeline.")
+    parser.add_argument(
+        "--config",
+        default="configs/run_config.json",
+        help="Run config JSON file. Relative paths are resolved from the project root.",
+    )
+    return parser.parse_args()
 
 
 @dataclass
@@ -110,11 +131,15 @@ def discover_free_gpus() -> List[str]:
     return gpu_ids
 
 
-def run_training_jobs(jobs: List[PipelineJob], gpu_ids: List[str]) -> int:
+def run_training_jobs(
+    jobs: List[PipelineJob],
+    gpu_ids: List[str],
+    env: Optional[Dict[str, str]] = None,
+) -> int:
     """Run training jobs in parallel across GPUs, or sequentially without GPUs."""
     if not gpu_ids:
         for job in jobs:
-            exit_code = run_script(job.name, job.script_path, job.args)
+            exit_code = run_script(job.name, job.script_path, job.args, env=env)
             if exit_code != 0:
                 return exit_code
         return 0
@@ -127,14 +152,14 @@ def run_training_jobs(jobs: List[PipelineJob], gpu_ids: List[str]) -> int:
         while pending and available_gpus:
             job = pending.pop(0)
             gpu_id = available_gpus.pop(0)
-            env = os.environ.copy()
-            env["CUDA_VISIBLE_DEVICES"] = gpu_id
-            env["PATHVLM_TRAINING_DEVICE"] = "cuda:0"
+            job_env = (env or os.environ).copy()
+            job_env["CUDA_VISIBLE_DEVICES"] = gpu_id
+            job_env["PATHVLM_TRAINING_DEVICE"] = "cuda:0"
             logger.info("Starting %s on GPU %s", job.name, gpu_id)
             process = subprocess.Popen(
                 [sys.executable, job.script_path, *job.args],
                 cwd=os.path.dirname(job.script_path),
-                env=env,
+                env=job_env,
             )
             running.append({"job": job, "gpu_id": gpu_id, "process": process})
 
@@ -203,6 +228,16 @@ def training_jobs(script_dir: str, split_dir: str, results_suffix: str) -> List[
 
 def main():
     """Run full pipeline."""
+    args = parse_args()
+    source_config_path = resolve_config_path(args.config)
+    if not os.path.exists(source_config_path):
+        logger.error("Config file not found: %s", source_config_path)
+        return 1
+
+    os.environ["PATHVLM_RUN_CONFIG_PATH"] = source_config_path
+
+    from src.config import Config, setup_directories, snapshot_run_config
+    from src.results_discovery import default_results_dir, discover_result_dirs
 
     logger.info("=" * 70)
     logger.info("PATHVLM: FULL PIPELINE ORCHESTRATOR")
@@ -214,7 +249,14 @@ def main():
     prepare_script = os.path.join(script_dir, "01_prepare_data.py")
     summarize_script = os.path.join(script_dir, "05_summarize_results.py")
 
-    exit_code = run_script("01 - Data Preparation", prepare_script)
+    setup_directories()
+    golden_config_path = snapshot_run_config()
+    pipeline_env = os.environ.copy()
+    pipeline_env["PATHVLM_RUN_CONFIG_PATH"] = golden_config_path
+    logger.info("Source run config: %s", source_config_path)
+    logger.info("Golden run config: %s", golden_config_path)
+
+    exit_code = run_script("01 - Data Preparation", prepare_script, env=pipeline_env)
     if exit_code != 0:
         logger.error("PIPELINE FAILED at step: 01 - Data Preparation")
         return exit_code
@@ -236,12 +278,13 @@ def main():
         exit_code = run_training_jobs(
             training_jobs(script_dir, split_dir, fold_name),
             gpu_ids,
+            env=pipeline_env,
         )
         if exit_code != 0:
             logger.error("PIPELINE FAILED during %s", fold_name)
             return exit_code
 
-    exit_code = run_script("05 - Summarize Results", summarize_script)
+    exit_code = run_script("05 - Summarize Results", summarize_script, env=pipeline_env)
     if exit_code != 0:
         logger.error("PIPELINE FAILED at step: 05 - Summarize Results")
         return exit_code

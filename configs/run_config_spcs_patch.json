@@ -1,0 +1,73 @@
+{
+  "_choices": {
+    "data.tissue": [
+      "Breast",
+      "Lung"
+    ],
+    "data.expr_target": [
+      "8n",
+      "spcs"
+    ],
+    "data.split_strategy": [
+      "patch",
+      "tissue"
+    ],
+    "model.resnet_source": [
+      "torchvision",
+      "huggingface_local"
+    ],
+    "model.resnet_freeze_mode": [
+      "none",
+      "early",
+      "all"
+    ],
+    "model.dnn_normalization": [
+      "batchnorm",
+      "layernorm",
+      "none"
+    ],
+    "model.multimodal_model": [
+      "concat",
+      "cross_attention",
+      "gmu"
+    ]
+  },
+  "data_root": "data",
+  "project_root": ".",
+  "training": {
+    "batch_size": 64,
+    "num_workers": 4,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "max_epochs": 100,
+    "early_stop_patience": 6,
+    "device": "cuda",
+    "loss_eps": 1e-06
+  },
+  "model": {
+    "resnet_backbone": "resnet50",
+    "resnet_source": "torchvision",
+    "resnet_local_path": "local_models/microsoft_resnet-50",
+    "resnet_pretrained": true,
+    "resnet_freeze_mode": "early",
+    "dnn_hidden_sizes": [
+      1024,
+      512
+    ],
+    "dnn_dropout": 0.4,
+    "dnn_normalization": "batchnorm",
+    "multimodal_model": "gmu"
+  },
+  "data": {
+    "tissue": "Breast",
+    "expr_target": "spcs",
+    "split_strategy": "patch",
+    "cv_enabled": true,
+    "num_folds": 6,
+    "cv_val_ratio": 0.1,
+    "force_update_data": false,
+    "train_ratio": 0.75,
+    "val_ratio": 0.1,
+    "test_ratio": 0.15
+  }
+}
